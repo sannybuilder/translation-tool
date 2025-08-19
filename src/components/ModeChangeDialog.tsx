@@ -8,6 +8,8 @@ interface ModeChangeDialogProps {
   pendingMode: SourceMode | null;
   onCancel: () => void;
   onConfirm: () => void;
+  hasChanges?: boolean;
+  pendingChangesCount?: number;
 }
 
 const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
@@ -16,6 +18,8 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
   pendingMode,
   onCancel,
   onConfirm,
+  hasChanges = false,
+  pendingChangesCount = 0,
 }) => {
   useEffect(() => {
     if (!visible) return;
@@ -71,7 +75,7 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
             fontSize: "1.2rem",
           }}
         >
-          ⚠️ Unsaved Changes
+          ⚠️ Warning: Changes Will Be Lost
         </h3>
 
         <p
@@ -81,12 +85,35 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
             color: "#ccc",
           }}
         >
-          You have <strong>unsaved changes</strong> that will be lost when switching from {" "}
-          <strong>{currentLabel}</strong> mode to {" "}
-          <strong>{targetLabel}</strong> mode.
-          <br />
-          <br />
-          Please save your work first or confirm to discard the changes.
+          Switching from <strong>{currentLabel}</strong> mode to {" "}
+          <strong>{targetLabel}</strong> mode will discard:
+        </p>
+        
+        <ul
+          style={{
+            margin: "0 0 1.5rem 0",
+            lineHeight: "1.6",
+            color: "#ccc",
+            paddingLeft: "1.5rem",
+          }}
+        >
+          {hasChanges && (
+            <li><strong>Unsaved edits</strong> in the current session</li>
+          )}
+          {pendingChangesCount > 0 && (
+            <li><strong>{pendingChangesCount} pending changes</strong> waiting for review</li>
+          )}
+          <li>Your current <strong>session data</strong></li>
+        </ul>
+
+        <p
+          style={{
+            margin: "0 0 1.5rem 0",
+            lineHeight: "1.6",
+            color: "#ccc",
+          }}
+        >
+          Please save your work or submit pending changes first, or confirm to discard everything.
         </p>
 
         <p

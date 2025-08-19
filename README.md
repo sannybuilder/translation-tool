@@ -1,49 +1,117 @@
 # Sanny Builder Translation Tool
 
-A web-based translation editor for Sanny Builder language files. This application supports both loading files from the [sannybuilder/translations](https://github.com/sannybuilder/translations) GitHub repository and working with local INI files.
+A simple web app for translating Sanny Builder language files. You can help translate the interface into your language!
 
-## Features
+## 🚀 Quick Start
 
-- **Dual Source Support**: 
-  - **GitHub Mode**: Automatically fetches all available translation files from the official Sanny Builder translations repository
-  - **Local Mode**: Load and edit INI files from your computer
-- **Real-time Comparison**: Side-by-side view of English source text and translations
-- **Translation Status Tracking**: Visual indicators for:
-  - Missing translations (red)
-  - Identical to English (orange) 
-  - Translated (green)
-- **Progress Statistics**: Track overall translation progress with completion percentage
-- **Export Functionality**: Download edited translations as properly formatted .ini files
-- **ANSI Encoding Support**: Proper handling of special characters used in translation files
-- **Sticky Section Headers**: Easy navigation through large translation files
-- **Responsive Design**: Mobile-friendly interface that adapts to different screen sizes
-- **Session Management**: Automatic local autosave with resume-on-reload banner and a "Last saved" indicator
+### Step 1: Open the Tool
+Visit the web app in your browser. It will automatically load available translations from GitHub.
 
-## Usage
+### Step 2: Choose Your Language
+Select the language you want to translate from the dropdown menu at the top.
 
-### GitHub Mode (Default)
+### Step 3: Start Translating
+- You'll see English text on the left
+- Type your translation on the right
+- The app saves your work automatically as you type
 
-1. The app automatically loads the list of available translations from GitHub
-2. Select a language from the dropdown to start editing
-3. Edit translations directly in the text fields
-4. The Download button becomes active when changes are detected
-5. Click "Download" to download the modified .ini file
+## 📝 How to Edit Translations
 
-### Local Files Mode
+### Understanding the Colors
+- 🔴 **Red** = Missing translation (needs your help!)
+- 🟠 **Orange** = Same as English (might need translation)
+- 🟢 **Green** = Already translated
 
-1. Switch the Source to "Local" in the header.
-2. Use the header file pickers or the Local Translations area to open the English (base) and translation `.ini` files, or drag-and-drop `.ini` files.
-3. Edit translations directly in the text fields.
-4. The Download button becomes active when changes are detected.
-5. Click "Download" to download the edited `.ini` file.
+### Making Changes
+1. Click on any text field to edit
+2. Type your translation
+3. The app tracks all your changes automatically
+4. Look for the "Review Changes" button in the header showing how many changes you've made
 
-## Session Management
+## 📤 Submitting Your Work
 
-- The app automatically saves your work to your browser as you type. A "Auto saved" indicator appears in the header.
-- If you close or refresh the page with unsaved work, a resume banner will appear next time. Choose "Resume Session" to restore your last state, or "Start Fresh" to discard it.
-- Resuming opens in Local mode to avoid loading remote content; your previous base and translation data are restored.
-- Downloading (Save) clears the session. You can also discard it via the banner.
-- Your data never leaves your browser. Sessions are specific to the same device and browser; clearing site data removes them.
+You don't need to translate everything at once! Submit small changes anytime:
+
+### Using Review Changes
+1. Click "Review Changes" button in the header when you have changes
+2. Select the translations you want to submit
+3. Choose how to submit from the dropdown:
+   - **Copy to Clipboard** - Share via Discord or email
+   - **Download Patch** - Save changes as a patch file
+   - **Download Full File** - Save the complete translation file
+   - **Create GitHub Issue** - Submit directly to the project
+
+## 💡 Tips for New Translators
+
+### Start Small
+- Pick a section with few items
+- Translate 5-10 items at a time
+- Submit often - don't wait to finish everything!
+
+### Work Together
+- Check Discord to see what others are working on
+- Focus on red (missing) translations first
+- Ask questions if you're unsure about something
+
+### Save Your Progress
+- The app saves automatically as you type
+- If you close the browser, your work is saved
+- Look for "Resume Session" when you come back
+
+## 🎯 Basic Workflow
+
+1. **Load** → Select your language
+2. **Translate** → Fill in missing translations
+3. **Review** → Click "Review Changes" button in header
+4. **Submit** → Choose how to send your translations
+5. **Repeat** → Keep going or take a break!
+
+## 🔧 Features
+
+### Automatic Features
+- ✅ Auto-save as you type
+- ✅ Track all your changes
+- ✅ Resume where you left off
+- ✅ Progress percentage shown
+
+### Manual Controls
+- Switch between GitHub and local files
+- Search for specific text (Ctrl+F)
+- Review and submit changes (full or partial)
+- Choose submission method (clipboard, patch, full file, GitHub)
+
+## ❓ Need Help?
+
+### Common Questions
+
+**Q: Do I need to translate everything?**  
+A: No! Even translating one word helps. Submit whatever you can.
+
+**Q: What if I make a mistake?**  
+A: No problem! Translations can be fixed later. Just do your best.
+
+**Q: How do I know my changes were accepted?**  
+A: Check the GitHub issue or ask on Discord.
+
+**Q: Can multiple people work on the same language?**  
+A: Yes! Coordinate on Discord to avoid duplicating work.
+
+### Getting Support
+1. Ask on Discord for quick help
+2. Create a GitHub issue for bugs
+3. Check existing translations for examples
+
+## 🌍 Every Translation Helps!
+
+Remember:
+- Small contributions are valuable
+- You don't need to be perfect
+- Ask for help when needed
+- Have fun helping the community!
+
+---
+
+*Thank you for helping make Sanny Builder accessible to more people around the world!*
 
 ## License
 

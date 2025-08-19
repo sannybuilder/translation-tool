@@ -5,7 +5,7 @@ import StatusBanner from './components/StatusBanner';
 import GitHubErrorView from './components/GitHubErrorView';
 import TranslationSections from './components/TranslationSections';
 import ModeChangeDialog from './components/ModeChangeDialog';
-import SessionResumeBanner from './components/SessionResumeBanner';
+import PartialUpdatePanel from './components/PartialUpdatePanel';
 import { parseIni, serializeIni, countFormatSpecifiers } from './utils/iniParser';
 import type { IniData } from './utils/iniParser';
 import type { TranslationEntry } from './types/translation';
@@ -19,6 +19,7 @@ import {
   readLocalFile,
 } from './utils/githubCache';
 import { saveSession, loadSession, clearSession, getAutosaveInterval } from './utils/sessionManager';
+import { ChangeTracker } from './utils/changeTracker';
 import './App.css';
 
 type SourceMode = 'github' | 'local';
@@ -46,20 +47,26 @@ function App() {
   const [showModeChangeConfirm, setShowModeChangeConfirm] = useState(false);
   const [pendingMode, setPendingMode] = useState<SourceMode | null>(null);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
-  const [hasSavedThisRun, setHasSavedThisRun] = useState(false);
 
   // Session management state
   const [sessionState, setSessionState] = useState<SessionState>({
     hasSession: false,
     lastSaveTime: null,
     isAutoSaving: false,
-    showResumePrompt: false,
   });
   const [initialSessionData, setInitialSessionData] = useState<SessionData | null>(null);
+  // Track currently editing entry to prevent it from disappearing when filters are active
+  const [editingEntry, setEditingEntry] = useState<{ section: string; key: string } | null>(null);
   // Deprecated: kept to avoid large refactors; no longer used after switching to debounced save
   // const autoSaveIntervalRef = useRef<number | null>(null);
   const debouncedSaveTimeoutRef = useRef<number | null>(null);
   const userEditedRef = useRef<boolean>(false);
+  
+  // Change tracking for partial updates
+  const [changeTracker, setChangeTracker] = useState<ChangeTracker | null>(null);
+  const changeTrackerRef = useRef<ChangeTracker | null>(null);
+  const [changeTrackerUpdateTrigger, setChangeTrackerUpdateTrigger] = useState(0);
+  const [isPartialUpdatePanelOpen, setIsPartialUpdatePanelOpen] = useState(false);
 
   // Check screen size for responsive design
   const [screenSize, setScreenSize] = useState(() => {
@@ -68,6 +75,9 @@ function App() {
     if (width <= 1024) return 'medium';
     return 'desktop';
   });
+
+  // Scroll to top button visibility
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const isMobile = screenSize === 'mobile';
   const isMedium = screenSize === 'medium';
@@ -84,50 +94,56 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Handle scroll events for scroll-to-top button visibility
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 200;
+      setShowScrollTop(scrolled);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   // Check for existing session on app load
   useEffect(() => {
     const existingSession = loadSession();
     if (existingSession) {
-      setSessionState((prev) => ({
-        ...prev,
-        hasSession: true,
-        showResumePrompt: true,
-        lastSaveTime: existingSession.timestamp,
-      }));
-      setInitialSessionData(existingSession);
-      // Prevent any loading spinners while waiting for user choice
-      setLoading(false);
+      // Check if there are pending changes that haven't been submitted
+      const hasPendingChanges = ChangeTracker.getPendingChangesLanguage() !== null;
+      
+      if (hasPendingChanges) {
+        // Automatically restore session if there are pending changes
+        setInitialSessionData(existingSession);
+        setSessionState((prev) => ({
+          ...prev,
+          hasSession: true,
+          lastSaveTime: existingSession.timestamp,
+        }));
+        // We'll trigger the resume after this effect completes
+      } else {
+        // No pending changes, start fresh
+        clearSession();
+        setSessionState({
+          hasSession: false,
+          lastSaveTime: null,
+          isAutoSaving: false,
+        });
+      }
     }
     // Gate: mark that we've completed the session check (whether we found a session or not)
     setHasCheckedSession(true);
   }, []);
 
-  // Keep a CSS variable with the header height so section headings can stick below it
-  useEffect(() => {
-    const setHeaderHeightVar = () => {
-      const header = document.getElementById('app-header');
-      const height = header ? header.getBoundingClientRect().height : 0;
-      const effective = Math.max(Math.ceil(height), 168);
-      document.documentElement.style.setProperty('--header-height', `${effective}px`);
-    };
 
-    setHeaderHeightVar();
-    window.addEventListener('resize', setHeaderHeightVar);
-    // Also observe mutations in case header content changes (fonts, content)
-    const obs = new MutationObserver(() => setHeaderHeightVar());
-    const headerEl = document.getElementById('app-header');
-    if (headerEl)
-      obs.observe(headerEl, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-      });
-
-    return () => {
-      window.removeEventListener('resize', setHeaderHeightVar);
-      obs.disconnect();
-    };
-  }, []);
 
   // Handle local English file upload
   const handleEnglishFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,10 +218,7 @@ function App() {
       return;
     }
 
-    if (sessionState.showResumePrompt) {
-      setLoading(false);
-      return;
-    }
+
 
     // If we get here, we should load from GitHub
     const fetchAvailableTranslations = async () => {
@@ -303,12 +316,19 @@ function App() {
 
     // Only call the function if we haven't returned early
     fetchAvailableTranslations();
-  }, [sourceMode, hasInitiallyLoaded, githubInitiallyFailed, sessionState.showResumePrompt, hasCheckedSession]);
+  }, [sourceMode, hasInitiallyLoaded, githubInitiallyFailed, hasCheckedSession]);
 
   // Load selected translation from GitHub
   useEffect(() => {
     if (!hasCheckedSession) return;
-    if (selectedTranslation && sourceMode === 'github' && !sessionState.showResumePrompt) {
+    if (selectedTranslation && sourceMode === 'github') {
+      // Clear change tracker when switching to a different translation file
+      if (changeTrackerRef.current) {
+        changeTrackerRef.current.reset({});
+        changeTrackerRef.current = null;
+        setChangeTracker(null);
+        setChangeTrackerUpdateTrigger(0);
+      }
       const loadTranslation = async () => {
         const cacheKey = `translation_${selectedTranslation}`;
 
@@ -370,7 +390,27 @@ function App() {
 
       loadTranslation();
     }
-  }, [selectedTranslation, sourceMode, hasInitiallyLoaded, sessionState.showResumePrompt, hasCheckedSession]);
+  }, [selectedTranslation, sourceMode, hasInitiallyLoaded, hasCheckedSession]);
+
+  // Initialize change tracker when translation data changes
+  useEffect(() => {
+    if (Object.keys(originalTranslationData).length > 0) {
+      // Only create a new tracker if we don't have one or if the original data is completely different
+      // (e.g., when switching files)
+      if (!changeTrackerRef.current || JSON.stringify(changeTrackerRef.current.originalData) !== JSON.stringify(originalTranslationData)) {
+        const tracker = new ChangeTracker(originalTranslationData, selectedTranslation);
+        changeTrackerRef.current = tracker;
+        setChangeTracker(tracker);
+      }
+    }
+  }, [originalTranslationData, selectedTranslation]);
+
+  // Update tracker's selected translation when it changes
+  useEffect(() => {
+    if (changeTrackerRef.current && selectedTranslation) {
+      changeTrackerRef.current.setSelectedTranslation(selectedTranslation);
+    }
+  }, [selectedTranslation]);
 
   // Process entries when data changes
   useEffect(() => {
@@ -441,6 +481,13 @@ function App() {
     setTranslationData(newTranslationData);
     userEditedRef.current = true;
 
+    // Track the change for partial updates
+    if (changeTrackerRef.current) {
+      changeTrackerRef.current.trackChange(section, key, value);
+      // Force re-render to update the panel
+      setChangeTrackerUpdateTrigger(prev => prev + 1);
+    }
+
     // Compare with original to detect changes
     // First check if the specific value has changed
     const originalValue = originalTranslationData[section]?.[key] || '';
@@ -478,7 +525,6 @@ function App() {
   );
 
   const saveSessionImmediately = useCallback(() => {
-    if (sessionState.showResumePrompt) return;
     if (debouncedSaveTimeoutRef.current) {
       clearTimeout(debouncedSaveTimeoutRef.current);
       debouncedSaveTimeoutRef.current = null;
@@ -491,8 +537,7 @@ function App() {
       isAutoSaving: false,
       lastSaveTime: Date.now(),
     }));
-    setHasSavedThisRun(true);
-  }, [createSessionData, sessionState.showResumePrompt]);
+  }, [createSessionData]);
 
   // Interval autosave disabled; we use debounced saving instead
   const startAutoSave = useCallback(() => {}, []);
@@ -526,13 +571,14 @@ function App() {
 
     setSessionState((prev) => ({
       ...prev,
-      showResumePrompt: false,
       lastSaveTime: session.timestamp,
     }));
 
     // Start autosave after resuming
     startAutoSave();
-    setHasSavedThisRun(false);
+    
+    // Force update of change tracker to ensure UI reflects pending changes
+    setChangeTrackerUpdateTrigger(prev => prev + 1);
 
     // Refresh only the list of available translations from GitHub (/contents),
     // but do not load any file contents (avoid english.ini/translation files)
@@ -548,31 +594,18 @@ function App() {
     })();
   }, [initialSessionData, startAutoSave]);
 
-  const handleDiscardSession = useCallback(() => {
-    clearSession();
-    setSessionState({
-      hasSession: false,
-      lastSaveTime: null,
-      isAutoSaving: false,
-      showResumePrompt: false,
-    });
-    setInitialSessionData(null);
-    setHasSavedThisRun(false);
 
-    // Reset to initial state and trigger GitHub loading for fresh start
-    setEnglishData({});
-    setTranslationData({});
-    setOriginalTranslationData({});
-    setSelectedTranslation('');
-    setAvailableTranslations([]);
-    setEntries([]);
-    setHasChanges(false);
-    setError(null);
-  }, []);
+
+  // Automatically resume session if there are pending changes
+  useEffect(() => {
+    if (initialSessionData && sessionState.hasSession) {
+      // This means we have a session with pending changes that should be auto-restored
+      handleResumeSession();
+    }
+  }, [initialSessionData, sessionState.hasSession, handleResumeSession]);
 
   // Debounced save: persist to localStorage only after user stops typing
   useEffect(() => {
-    if (sessionState.showResumePrompt) return;
     // Only schedule a save if this change was initiated by the user.
     // This ensures we also save when the user reverts back to the original content
     // (i.e., hasChanges becomes false), but avoid saving on programmatic loads.
@@ -593,7 +626,6 @@ function App() {
         isAutoSaving: false,
         lastSaveTime: Date.now(),
       }));
-      setHasSavedThisRun(true);
       userEditedRef.current = false;
       debouncedSaveTimeoutRef.current = null;
     }, getAutosaveInterval());
@@ -603,12 +635,12 @@ function App() {
         clearTimeout(debouncedSaveTimeoutRef.current);
       }
     };
-  }, [translationData, sessionState.showResumePrompt, createSessionData]);
+  }, [translationData, createSessionData]);
 
   // Cleanup debounced save on unmount
   useEffect(() => {
     return () => stopAutoSave();
-  }, []);
+  }, [stopAutoSave]);
 
   const handleSave = () => {
     const content = serializeIni(translationData);
@@ -632,6 +664,14 @@ function App() {
     setOriginalTranslationData(JSON.parse(JSON.stringify(translationData)));
     setHasChanges(false);
 
+    // Clear change tracker after successful save (since we saved everything)
+    if (changeTrackerRef.current) {
+      changeTrackerRef.current.reset({});
+      changeTrackerRef.current = null;
+      setChangeTracker(null);
+      setChangeTrackerUpdateTrigger(0);
+    }
+
     // Clear session after successful save
     clearSession();
     stopAutoSave();
@@ -639,14 +679,15 @@ function App() {
       hasSession: false,
       lastSaveTime: null,
       isAutoSaving: false,
-      showResumePrompt: false,
     });
   };
 
   // Handle source mode change
   const handleSourceModeChange = (mode: SourceMode) => {
-    // Only show confirmation if there are unsaved changes (save button is active)
-    if (hasChanges && mode !== sourceMode) {
+    // Check for unsaved changes or pending changes for review
+    const hasPendingChanges = (changeTrackerRef.current?.getStats().pending || 0) > 0;
+    
+    if ((hasChanges || hasPendingChanges) && mode !== sourceMode) {
       // Show confirmation dialog
       setPendingMode(mode);
       setShowModeChangeConfirm(true);
@@ -661,6 +702,24 @@ function App() {
   const performSourceModeChange = (mode: SourceMode) => {
     setSourceMode(mode);
     setError(null);
+    
+    // Clear change tracker when switching modes
+    if (changeTrackerRef.current) {
+      changeTrackerRef.current.reset({});
+      changeTrackerRef.current = null;
+      setChangeTracker(null);
+      setChangeTrackerUpdateTrigger(0);
+    }
+    
+    // Clear the session when switching modes
+    clearSession();
+    setSessionState({
+      hasSession: false,
+      lastSaveTime: null,
+      isAutoSaving: false,
+    });
+    stopAutoSave();
+    
     if (mode === 'local') {
       // Clear all data and GitHub-specific state when switching to local
       setEnglishData({});
@@ -698,21 +757,8 @@ function App() {
 
   // Keyboard events handled inside ModeChangeDialog component
 
-  // Filter entries based on filter mode
-  const filteredEntries = entries.filter((entry) => {
-    switch (filterMode) {
-      case 'untranslated':
-        return entry.status === 'missing' || entry.status === 'same';
-      case 'invalid':
-        return entry.isInvalid === true;
-      case 'all':
-      default:
-        return true;
-    }
-  });
-
-  // Group filtered entries by section
-  const groupedEntries = filteredEntries.reduce((acc, entry) => {
+  // Group ALL entries by section (unfiltered) - filtering will be done in TranslationSections
+  const groupedEntries = entries.reduce((acc, entry) => {
     if (!acc[entry.section]) {
       acc[entry.section] = [];
     }
@@ -765,8 +811,6 @@ function App() {
           availableTranslations={availableTranslations}
           selectedTranslation={selectedTranslation}
           onTranslationChange={setSelectedTranslation}
-          onSave={handleSave}
-          hasChanges={hasChanges}
           totalKeys={stats.total}
           untranslatedKeys={stats.untranslated}
           invalidKeys={stats.invalid}
@@ -778,9 +822,42 @@ function App() {
           localEnglishFileName={localEnglishFileName}
           onEnglishFileUpload={handleEnglishFileUpload}
           onTranslationFileUpload={handleTranslationFileUpload}
-          lastSaveTime={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.lastSaveTime : null}
-          isAutoSaving={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.isAutoSaving : false}
+
+          screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
+          pendingChanges={changeTracker?.getStats().pending || 0}
+          onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
+          changeTracker={changeTracker}
         />
+        
+        {/* Mobile Progress Bar - Below Header */}
+        {isMobile && selectedTranslation && stats.total > 0 && (
+          <div
+            className="mobile-progress-bar"
+            style={{
+              width: '100%',
+              position: 'relative',
+              height: 5,
+              backgroundColor: '#1a1a1a',
+              overflow: 'hidden',
+            }}
+            title={`Progress: ${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                height: '100%',
+                width: `${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`,
+                background: `linear-gradient(90deg, 
+                  hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 70%, 45%) 0%, 
+                  hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 85%, 50%) 100%)`,
+                transition: 'width 0.3s ease, background 0.3s ease',
+              }}
+            />
+          </div>
+        )}
+        
         <GitHubErrorView
           error={error}
           onSwitchToLocal={() => handleSourceModeChange('local')}
@@ -796,8 +873,6 @@ function App() {
         availableTranslations={availableTranslations}
         selectedTranslation={selectedTranslation}
         onTranslationChange={setSelectedTranslation}
-        onSave={handleSave}
-        hasChanges={hasChanges}
         totalKeys={stats.total}
         untranslatedKeys={stats.untranslated}
         invalidKeys={stats.invalid}
@@ -810,18 +885,40 @@ function App() {
         onEnglishFileUpload={handleEnglishFileUpload}
         onTranslationFileUpload={handleTranslationFileUpload}
         isUsingCache={isUsingCache}
-        lastSaveTime={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.lastSaveTime : null}
-        isAutoSaving={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.isAutoSaving : false}
-        hideControls={sessionState.showResumePrompt}
+        hideControls={false}
+        screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
+        pendingChanges={changeTracker?.getStats().pending || 0}
+        onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
+        changeTracker={changeTracker}
       />
 
-      {/* Session Resume Banner */}
-      {sessionState.showResumePrompt && (
-        <SessionResumeBanner
-          timestamp={initialSessionData?.timestamp || null}
-          onDiscard={handleDiscardSession}
-          onResume={handleResumeSession}
-        />
+      {/* Mobile Progress Bar - Below Header */}
+      {isMobile && selectedTranslation && stats.total > 0 && (
+        <div
+          className="mobile-progress-bar"
+          style={{
+            width: '100%',
+            position: 'relative',
+            height: 5,
+            backgroundColor: '#1a1a1a',
+            overflow: 'hidden',
+          }}
+          title={`Progress: ${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              height: '100%',
+              width: `${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`,
+              background: `linear-gradient(90deg, 
+                hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 70%, 45%) 0%, 
+                hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 85%, 50%) 100%)`,
+              transition: 'width 0.3s ease, background 0.3s ease',
+            }}
+          />
+        </div>
       )}
 
       {error && sourceMode === 'github' && (
@@ -854,7 +951,13 @@ function App() {
           sectionStats={sectionStats}
           screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
           onTranslationChange={handleTranslationChange}
-          onBlurSave={saveSessionImmediately}
+          onFocusEntry={(section, key) => setEditingEntry({ section, key })}
+          onBlurEntry={() => {
+            setEditingEntry(null);
+            saveSessionImmediately();
+          }}
+          globalFilterMode={filterMode}
+          editingEntry={editingEntry}
         />
       </main>
 
@@ -864,7 +967,46 @@ function App() {
         pendingMode={pendingMode}
         onCancel={cancelModeChange}
         onConfirm={confirmModeChange}
+        hasChanges={hasChanges}
+        pendingChangesCount={changeTrackerRef.current?.getStats().pending || 0}
       />
+
+      {/* Partial Update Panel - show when there's a change tracker with changes */}
+      {changeTracker && (
+        <PartialUpdatePanel
+          changeTracker={changeTracker}
+          selectedTranslation={selectedTranslation}
+          refreshTrigger={changeTrackerUpdateTrigger}
+          isOpen={isPartialUpdatePanelOpen}
+          onClose={() => setIsPartialUpdatePanelOpen(false)}
+          onDownloadFullFile={handleSave}
+          onUndo={(section, key, originalValue) => {
+            // Update the translation data with the original value
+            handleTranslationChange(section, key, originalValue);
+          }}
+        />
+      )}
+
+      {/* Floating Scroll to Top Button */}
+      <button
+        className={`scroll-to-top ${showScrollTop ? 'visible' : ''}`}
+        onClick={scrollToTop}
+        aria-label="Scroll to top"
+        title="Scroll to top"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M10 4L4 10L5.5 11.5L9 8V16H11V8L14.5 11.5L16 10L10 4Z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
     </div>
   );
 }

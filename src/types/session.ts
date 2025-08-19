@@ -14,5 +14,4 @@ export interface SessionState {
   hasSession: boolean;
   lastSaveTime: number | null;
   isAutoSaving: boolean;
-  showResumePrompt: boolean;
 }

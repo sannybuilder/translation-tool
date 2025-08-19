@@ -2,7 +2,7 @@ import React from 'react';
 import sannyLogo from '../assets/sanny.png';
 import githubLogo from '../assets/github.svg';
 import discordLogo from '../assets/discord.svg';
-import { formatLastSaveTime } from '../utils/sessionManager';
+import { ChangeTracker } from '../utils/changeTracker';
 
 type SourceMode = 'github' | 'local';
 type FilterMode = 'all' | 'untranslated' | 'invalid';
@@ -11,8 +11,6 @@ interface HeaderProps {
   availableTranslations: string[];
   selectedTranslation: string;
   onTranslationChange: (translation: string) => void;
-  onSave: () => void;
-  hasChanges: boolean;
   totalKeys: number;
   untranslatedKeys: number;
   invalidKeys?: number;
@@ -26,19 +24,19 @@ interface HeaderProps {
   onTranslationFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   isUsingCache?: boolean;
   suppressRandomize?: boolean;
-  lastSaveTime?: number | null;
-  isAutoSaving?: boolean;
   hideControls?: boolean;
+  screenSize?: 'mobile' | 'medium' | 'desktop';
+  pendingChanges?: number;
+  onReviewChangesClick?: () => void;
+  changeTracker?: ChangeTracker | null; // For checking pending changes language
 }
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef } from 'react';
 
 const Header: React.FC<HeaderProps> = ({
   availableTranslations,
   selectedTranslation,
   onTranslationChange,
-  onSave,
-  hasChanges,
   totalKeys,
   untranslatedKeys,
   invalidKeys = 0,
@@ -52,42 +50,14 @@ const Header: React.FC<HeaderProps> = ({
   onTranslationFileUpload,
   isUsingCache = false,
   suppressRandomize = false,
-  lastSaveTime = null,
-  isAutoSaving = false,
   hideControls = false,
+  screenSize = 'desktop',
+  pendingChanges = 0,
+  onReviewChangesClick,
+  changeTracker,
 }) => {
   // Track whether we've already randomized once
   const didRandomizeRef = useRef(false);
-  const [timeTick, setTimeTick] = useState(0);
-
-  // Refresh the "Last saved" label periodically so relative time updates
-  useEffect(() => {
-    if (!lastSaveTime) return;
-    let cancelled = false;
-    let timeoutId: number | null = null;
-
-    const schedule = () => {
-      if (cancelled) return;
-      const diff = Date.now() - lastSaveTime;
-      const delay = diff < 60000 ? 10000 : 60000; // 10s for first minute, then 60s
-      timeoutId = window.setTimeout(() => {
-        if (cancelled) return;
-        setTimeTick(Date.now());
-        schedule();
-      }, delay);
-    };
-
-    schedule();
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [lastSaveTime]);
-
-  const lastSavedLabel = useMemo(() => {
-    if (!lastSaveTime) return '';
-    return formatLastSaveTime(lastSaveTime);
-  }, [lastSaveTime, timeTick]);
 
   useEffect(() => {
     // Skip randomization if an initial lang was provided via query param
@@ -95,15 +65,43 @@ const Header: React.FC<HeaderProps> = ({
     // Only randomize once on the very first availability of translations.
     // Randomize only when there's no selection yet (selectedTranslation is empty).
     if (!didRandomizeRef.current && availableTranslations.length > 0 && selectedTranslation === '') {
-      const randomLang = availableTranslations[Math.floor(Math.random() * availableTranslations.length)];
-      if (randomLang !== selectedTranslation) {
-        onTranslationChange(randomLang);
+      // Check if there are pending changes with a language preference
+      let langToSelect = null;
+      
+      // First, check for pending changes language (this takes priority)
+      const pendingChangesLanguage = ChangeTracker.getPendingChangesLanguage();
+      if (pendingChangesLanguage && availableTranslations.includes(pendingChangesLanguage)) {
+        langToSelect = pendingChangesLanguage;
+      }
+      
+      // If no pending changes language, check for saved session
+      if (!langToSelect && changeTracker) {
+        try {
+          const savedSession = localStorage.getItem('translation_session');
+          if (savedSession) {
+            const sessionData = JSON.parse(savedSession);
+            if (sessionData.selectedTranslation && availableTranslations.includes(sessionData.selectedTranslation)) {
+              langToSelect = sessionData.selectedTranslation;
+            }
+          }
+                    } catch {
+          // Fall back to random selection if we can't get the language
+        }
+      }
+      
+      // If no language from pending changes or session, pick random
+      if (!langToSelect || !availableTranslations.includes(langToSelect)) {
+        langToSelect = availableTranslations[Math.floor(Math.random() * availableTranslations.length)];
+      }
+      
+      if (langToSelect !== selectedTranslation) {
+        onTranslationChange(langToSelect);
       }
       didRandomizeRef.current = true;
     }
-  }, [availableTranslations, suppressRandomize]);
+  }, [availableTranslations, suppressRandomize, changeTracker, selectedTranslation, onTranslationChange]);
 
-  const downloadFileName = sourceMode === 'github' ? selectedTranslation : localFileName;
+  const isMobile = screenSize === 'mobile';
 
   return (
     <header
@@ -112,9 +110,6 @@ const Header: React.FC<HeaderProps> = ({
         background: '#181818',
         borderBottom: '1px solid #333',
         padding: '0 0 8px 0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
       }}
     >
       {/* Row 1: Logo, Name, Home, Github */}
@@ -143,9 +138,31 @@ const Header: React.FC<HeaderProps> = ({
                 fontSize: '1.15rem',
                 fontWeight: 700,
                 letterSpacing: 1,
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0',
               }}
             >
-              Translation Tool
+              <span>Translation</span>
+              <span style={{ marginLeft: '8px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+                Tool
+                <span
+                  style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    color: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(76, 175, 80, 0.3)',
+                    letterSpacing: '0.5px',
+                    marginLeft: '8px',
+                  }}
+                >
+                  BETA
+                </span>
+              </span>
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -224,44 +241,65 @@ const Header: React.FC<HeaderProps> = ({
               >
                 Source
               </span>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <button
-                  title="Use GitHub as source"
-                  aria-pressed={sourceMode === 'github'}
-                  onClick={() => onSourceModeChange('github')}
+              {isMobile ? (
+                <select
+                  value={sourceMode}
+                  onChange={(e) => onSourceModeChange(e.target.value as SourceMode)}
                   style={{
-                    background: sourceMode === 'github' ? '#4CAF50' : '#222',
+                    background: '#222',
                     color: '#fff',
                     border: '1px solid #444',
-                    borderRadius: '4px 0 0 4px',
-                    padding: '6px 16px',
+                    borderRadius: '4px',
+                    padding: '6px 12px',
                     fontWeight: 500,
                     fontSize: '0.95rem',
                     cursor: 'pointer',
-                    marginRight: 0,
+                    outline: 'none',
                   }}
                 >
-                  {isUsingCache ? 'GitHub (cached)' : 'GitHub'}
-                </button>
-                <button
-                  title="Use local files as source"
-                  aria-pressed={sourceMode === 'local'}
-                  onClick={() => onSourceModeChange('local')}
-                  style={{
-                    background: sourceMode === 'local' ? '#4CAF50' : '#222',
-                    color: '#fff',
-                    border: '1px solid #444',
-                    borderRadius: '0 4px 4px 0',
-                    padding: '6px 16px',
-                    fontWeight: 500,
-                    fontSize: '0.95rem',
-                    cursor: 'pointer',
-                    marginLeft: -1,
-                  }}
-                >
-                  {'Local'}
-                </button>
-              </div>
+                  <option value="github">{isUsingCache ? 'GitHub (cached)' : 'GitHub'}</option>
+                  <option value="local">Local</option>
+                </select>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <button
+                    title="Use GitHub as source"
+                    aria-pressed={sourceMode === 'github'}
+                    onClick={() => onSourceModeChange('github')}
+                    style={{
+                      background: sourceMode === 'github' ? '#4CAF50' : '#222',
+                      color: '#fff',
+                      border: '1px solid #444',
+                      borderRadius: '4px 0 0 4px',
+                      padding: '6px 16px',
+                      fontWeight: 500,
+                      fontSize: '0.95rem',
+                      cursor: 'pointer',
+                      marginRight: 0,
+                    }}
+                  >
+                    {isUsingCache ? 'GitHub (cached)' : 'GitHub'}
+                  </button>
+                  <button
+                    title="Use local files as source"
+                    aria-pressed={sourceMode === 'local'}
+                    onClick={() => onSourceModeChange('local')}
+                    style={{
+                      background: sourceMode === 'local' ? '#4CAF50' : '#222',
+                      color: '#fff',
+                      border: '1px solid #444',
+                      borderRadius: '0 4px 4px 0',
+                      padding: '6px 16px',
+                      fontWeight: 500,
+                      fontSize: '0.95rem',
+                      cursor: 'pointer',
+                      marginLeft: -1,
+                    }}
+                  >
+                    {'Local'}
+                  </button>
+                </div>
+              )}
             </div>
             {/* Language selector or upload buttons */}
             {sourceMode === 'github' ? (
@@ -307,13 +345,12 @@ const Header: React.FC<HeaderProps> = ({
                 </select>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <label
                   style={{
                     color: '#aaa',
                     fontWeight: 500,
                     fontSize: '1rem',
-                    marginRight: 8,
                   }}
                 >
                   English (Base):
@@ -347,7 +384,6 @@ const Header: React.FC<HeaderProps> = ({
                       color: '#aaa',
                       fontWeight: 500,
                       fontSize: '1rem',
-                      marginRight: 8,
                     }}
                   >
                     Translation:
@@ -382,19 +418,20 @@ const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Row 3: Filters left, Save right */}
-      {!hideControls && downloadFileName && (
+      {/* Row 3: Filters left, Review Changes right */}
+      {!hideControls && selectedTranslation && (
         <div className="content-width">
           <div
             style={{
               display: 'flex',
+              flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '4px 0 0',
               marginTop: 2,
             }}
           >
-            {/* Filters */}
+            {/* Filters and Desktop Progress */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 className="filter-btn"
@@ -532,74 +569,77 @@ const Header: React.FC<HeaderProps> = ({
                   ({invalidKeys})
                 </span>
               </button>
-              <span
-                className="progress-label"
-                style={{
-                  color: '#aaa',
-                  fontWeight: 500,
-                  fontSize: '1rem',
-                  marginLeft: 12,
-                }}
-              >
-                Progress:{' '}
+              {!isMobile && (
+                // Desktop: Show text progress
                 <span
+                  className="progress-label"
                   style={{
-                    color: untranslatedKeys === 0 && invalidKeys === 0 ? '#4CAF50' : '#fff',
-                    fontWeight: 700,
+                    color: '#aaa',
+                    fontWeight: 500,
+                    fontSize: '1rem',
+                    marginLeft: 12,
                   }}
                 >
-                  {totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%
+                  Progress:{' '}
+                  <span
+                    style={{
+                      color: untranslatedKeys === 0 && invalidKeys === 0 ? '#4CAF50' : '#fff',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%
+                  </span>
                 </span>
-              </span>
+              )}
             </div>
-            {/* Save Button with Session Info */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginLeft: 'auto',
-              }}
-            >
-              {lastSaveTime && (
-                <div
+            
+            {/* Review Changes Button */}
+            {pendingChanges > 0 && onReviewChangesClick && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <button
+                  onClick={onReviewChangesClick}
+                  className="review-changes-btn"
+                  title={`Review ${pendingChanges} pending changes`}
                   style={{
+                    background: '#4CAF50',
+                    color: '#fff',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    borderRadius: '4px',
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    color: '#aaa',
-                    fontSize: '0.9rem',
+                    gap: '8px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    transition: 'all 0.3s ease',
                   }}
                 >
-                  <div
-                    className={`save-dot ${isAutoSaving ? 'pulsating' : ''}`}
+                  {isMobile ? 'Review' : 'Review Changes'}
+                  <span
                     style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      backgroundColor: '#4CAF50',
+                      backgroundColor: '#fff',
+                      color: '#4CAF50',
+                      borderRadius: '12px',
+                      padding: '2px 8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold',
+                      minWidth: '24px',
+                      textAlign: 'center',
                     }}
-                  />
-                  <span>Auto saved: {lastSavedLabel}</span>
-                </div>
-              )}
-              <button
-                onClick={onSave}
-                className="save-btn"
-                title={hasChanges ? 'Download (includes your changes)' : 'Download current file'}
-                style={{
-                  background: '#4CAF50',
-                  color: '#fff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '8px 16px',
-                  borderRadius: '4px',
-                  fontSize: '0.9rem',
-                }}
-              >
-                Download {downloadFileName}
-              </button>
-            </div>
+                  >
+                    {pendingChanges}
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
