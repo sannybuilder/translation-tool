@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Header from "./components/Header";
-import TranslationRow from "./components/TranslationRow";
 import LocalFileEditor from "./components/LocalFileEditor";
+import StatusBanner from "./components/StatusBanner";
+import GitHubErrorView from "./components/GitHubErrorView";
+import TranslationSections from "./components/TranslationSections";
+import ModeChangeDialog from "./components/ModeChangeDialog";
+import SessionResumeBanner from "./components/SessionResumeBanner";
 import { parseIni, serializeIni, countFormatSpecifiers } from "./utils/iniParser";
 import type { IniData } from "./utils/iniParser";
 import type { TranslationEntry } from "./types/translation";
+import type { SessionData, SessionState } from "./types/session";
 import {
   getCachedData,
   setCachedData,
   fetchGitHubFileList,
   fetchTranslationFile,
+  fetchGitHubFileNamesOnly,
   readLocalFile,
 } from "./utils/githubCache";
+import {
+  saveSession,
+  loadSession,
+  clearSession,
+  getAutosaveInterval,
+} from "./utils/sessionManager";
 import "./App.css";
 
 type SourceMode = "github" | "local";
@@ -38,6 +50,21 @@ function App() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [showModeChangeConfirm, setShowModeChangeConfirm] = useState(false);
   const [pendingMode, setPendingMode] = useState<SourceMode | null>(null);
+  const [hasCheckedSession, setHasCheckedSession] = useState(false);
+  const [hasSavedThisRun, setHasSavedThisRun] = useState(false);
+
+  // Session management state
+  const [sessionState, setSessionState] = useState<SessionState>({
+    hasSession: false,
+    lastSaveTime: null,
+    isAutoSaving: false,
+    showResumePrompt: false,
+  });
+  const [initialSessionData, setInitialSessionData] = useState<SessionData | null>(null);
+  // Deprecated: kept to avoid large refactors; no longer used after switching to debounced save
+  // const autoSaveIntervalRef = useRef<number | null>(null);
+  const debouncedSaveTimeoutRef = useRef<number | null>(null);
+  const userEditedRef = useRef<boolean>(false);
 
   // Check screen size for responsive design
   const [screenSize, setScreenSize] = useState(() => {
@@ -62,12 +89,29 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Check for existing session on app load
+  useEffect(() => {
+    const existingSession = loadSession();
+    if (existingSession) {
+      setSessionState(prev => ({
+        ...prev,
+        hasSession: true,
+        showResumePrompt: true,
+        lastSaveTime: existingSession.timestamp,
+      }));
+      setInitialSessionData(existingSession);
+      // Prevent any loading spinners while waiting for user choice
+      setLoading(false);
+    }
+    // Gate: mark that we've completed the session check (whether we found a session or not)
+    setHasCheckedSession(true);
+  }, []);
+
   // Keep a CSS variable with the header height so section headings can stick below it
   useEffect(() => {
     const setHeaderHeightVar = () => {
       const header = document.getElementById("app-header");
       const height = header ? header.getBoundingClientRect().height : 0;
-      // Ensure a minimum top offset of 168px as requested
       const effective = Math.max(Math.ceil(height), 168);
       document.documentElement.style.setProperty("--header-height", `${effective}px`);
     };
@@ -149,12 +193,21 @@ function App() {
 
   // Fetch available translations from GitHub
   useEffect(() => {
+    // Early exits - don't do any GitHub loading in these cases
+    if (!hasCheckedSession) {
+      return;
+    }
     if (sourceMode === "local") {
       setLoading(false);
-      // setIsUsingCache(false);
       return;
     }
 
+    if (sessionState.showResumePrompt) {
+      setLoading(false);
+      return;
+    }
+
+    // If we get here, we should load from GitHub
     const fetchAvailableTranslations = async () => {
       setLoading(true);
       setError(null);
@@ -248,12 +301,14 @@ function App() {
       }
     };
 
+    // Only call the function if we haven't returned early
     fetchAvailableTranslations();
-  }, [sourceMode, hasInitiallyLoaded, githubInitiallyFailed]);
+  }, [sourceMode, hasInitiallyLoaded, githubInitiallyFailed, sessionState.showResumePrompt, hasCheckedSession]);
 
   // Load selected translation from GitHub
   useEffect(() => {
-    if (selectedTranslation && sourceMode === "github") {
+    if (!hasCheckedSession) return;
+    if (selectedTranslation && sourceMode === "github" && !sessionState.showResumePrompt) {
       const loadTranslation = async () => {
         const cacheKey = `translation_${selectedTranslation}`;
 
@@ -315,7 +370,7 @@ function App() {
 
       loadTranslation();
     }
-  }, [selectedTranslation, sourceMode, hasInitiallyLoaded]);
+  }, [selectedTranslation, sourceMode, hasInitiallyLoaded, sessionState.showResumePrompt, hasCheckedSession]);
 
   // Process entries when data changes
   useEffect(() => {
@@ -384,6 +439,7 @@ function App() {
 
     newTranslationData[section][key] = value;
     setTranslationData(newTranslationData);
+    userEditedRef.current = true;
 
     // Compare with original to detect changes
     // First check if the specific value has changed
@@ -395,6 +451,152 @@ function App() {
 
     setHasChanges(hasChanged || fullComparison);
   };
+
+  // Session management functions
+  const createSessionData = useCallback((): SessionData => ({
+    timestamp: Date.now(),
+    sourceMode,
+    selectedTranslation,
+    localFileName,
+    localEnglishFileName,
+    englishData,
+    translationData,
+    originalTranslationData,
+    availableTranslations,
+  }), [sourceMode, selectedTranslation, localFileName, localEnglishFileName, englishData, translationData, originalTranslationData, availableTranslations]);
+
+  const saveSessionImmediately = useCallback(() => {
+    if (sessionState.showResumePrompt) return;
+    if (debouncedSaveTimeoutRef.current) {
+      clearTimeout(debouncedSaveTimeoutRef.current);
+      debouncedSaveTimeoutRef.current = null;
+    }
+    const currentSession = createSessionData();
+    saveSession(currentSession);
+    setSessionState(prev => ({
+      ...prev,
+      hasSession: true,
+      isAutoSaving: false,
+      lastSaveTime: Date.now(),
+    }));
+    setHasSavedThisRun(true);
+  }, [createSessionData, sessionState.showResumePrompt]);
+
+  // Interval autosave disabled; we use debounced saving instead
+  const startAutoSave = useCallback(() => {}, []);
+
+  const stopAutoSave = useCallback(() => {
+    if (debouncedSaveTimeoutRef.current) {
+      clearTimeout(debouncedSaveTimeoutRef.current);
+      debouncedSaveTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleResumeSession = useCallback(() => {
+    if (!initialSessionData) return;
+
+    const session = initialSessionData;
+    // Force local mode on resume to avoid any GitHub content loads
+    setSourceMode("local");
+    setSelectedTranslation(session.selectedTranslation);
+    // Derive sensible local filenames if they were not present in the session
+    const derivedLocalEnglishName = session.localEnglishFileName || "english.ini";
+    const derivedLocalTranslationName = session.localFileName || session.selectedTranslation || "translation.ini";
+    setLocalFileName(derivedLocalTranslationName);
+    setLocalEnglishFileName(derivedLocalEnglishName);
+    setEnglishData(session.englishData);
+    setTranslationData(session.translationData);
+    setOriginalTranslationData(session.originalTranslationData);
+    setAvailableTranslations(session.availableTranslations);
+    // Mirror the behavior of opening local files manually
+    setHasChanges(false);
+    setError(null);
+    
+    setSessionState(prev => ({
+      ...prev,
+      showResumePrompt: false,
+      lastSaveTime: session.timestamp,
+    }));
+
+    // Start autosave after resuming
+    startAutoSave();
+    setHasSavedThisRun(false);
+
+    // Refresh only the list of available translations from GitHub (/contents),
+    // but do not load any file contents (avoid english.ini/translation files)
+    (async () => {
+      try {
+        const iniFiles = await fetchGitHubFileNamesOnly();
+        setCachedData("github_file_list", iniFiles);
+        setAvailableTranslations(iniFiles);
+      } catch (e) {
+        // Non-critical: keep session's saved list if GitHub listing fails
+        console.warn("Failed to refresh GitHub file list after resume:", e);
+      }
+    })();
+  }, [initialSessionData, startAutoSave]);
+
+  const handleDiscardSession = useCallback(() => {
+    clearSession();
+    setSessionState({
+      hasSession: false,
+      lastSaveTime: null,
+      isAutoSaving: false,
+      showResumePrompt: false,
+    });
+    setInitialSessionData(null);
+    setHasSavedThisRun(false);
+    
+    // Reset to initial state and trigger GitHub loading for fresh start
+    setEnglishData({});
+    setTranslationData({});
+    setOriginalTranslationData({});
+    setSelectedTranslation("");
+    setAvailableTranslations([]);
+    setEntries([]);
+    setHasChanges(false);
+    setError(null);
+  }, []);
+
+  // Debounced save: persist to localStorage only after user stops typing
+  useEffect(() => {
+    if (sessionState.showResumePrompt) return;
+    // Only schedule a save if this change was initiated by the user.
+    // This ensures we also save when the user reverts back to the original content
+    // (i.e., hasChanges becomes false), but avoid saving on programmatic loads.
+    if (!userEditedRef.current) return;
+
+    if (debouncedSaveTimeoutRef.current) {
+      clearTimeout(debouncedSaveTimeoutRef.current);
+      debouncedSaveTimeoutRef.current = null;
+    }
+
+    setSessionState(prev => ({ ...prev, isAutoSaving: true }));
+    debouncedSaveTimeoutRef.current = window.setTimeout(() => {
+      const currentSession = createSessionData();
+      saveSession(currentSession);
+      setSessionState(prev => ({
+        ...prev,
+        hasSession: true,
+        isAutoSaving: false,
+        lastSaveTime: Date.now(),
+      }));
+      setHasSavedThisRun(true);
+      userEditedRef.current = false;
+      debouncedSaveTimeoutRef.current = null;
+    }, getAutosaveInterval());
+
+    return () => {
+      if (debouncedSaveTimeoutRef.current) {
+        clearTimeout(debouncedSaveTimeoutRef.current);
+      }
+    };
+  }, [translationData, sessionState.showResumePrompt, createSessionData]);
+
+  // Cleanup debounced save on unmount
+  useEffect(() => {
+    return () => stopAutoSave();
+  }, []);
 
   const handleSave = () => {
     const content = serializeIni(translationData);
@@ -417,6 +619,16 @@ function App() {
     // Update original data after save (deep clone to avoid reference issues)
     setOriginalTranslationData(JSON.parse(JSON.stringify(translationData)));
     setHasChanges(false);
+
+    // Clear session after successful save
+    clearSession();
+    stopAutoSave();
+    setSessionState({
+      hasSession: false,
+      lastSaveTime: null,
+      isAutoSaving: false,
+      showResumePrompt: false,
+    });
   };
 
   // Handle source mode change
@@ -472,21 +684,7 @@ function App() {
     setShowModeChangeConfirm(false);
   };
 
-  // Handle keyboard events for confirmation dialog
-  useEffect(() => {
-    if (!showModeChangeConfirm) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        cancelModeChange();
-      } else if (event.key === "Enter") {
-        confirmModeChange();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showModeChangeConfirm, cancelModeChange, confirmModeChange]);
+  // Keyboard events handled inside ModeChangeDialog component
 
   // Filter entries based on filter mode
   const filteredEntries = entries.filter((entry) => {
@@ -568,83 +766,14 @@ function App() {
           localEnglishFileName={localEnglishFileName}
           onEnglishFileUpload={handleEnglishFileUpload}
           onTranslationFileUpload={handleTranslationFileUpload}
+          lastSaveTime={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.lastSaveTime : null}
+          isAutoSaving={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.isAutoSaving : false}
         />
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "50vh",
-            padding: "2rem",
-            color: "#fff",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #333",
-              borderRadius: "8px",
-              padding: "2rem",
-              maxWidth: "600px",
-              textAlign: "center",
-            }}
-          >
-            <h2 style={{ color: "#ff9800", marginBottom: "1rem" }}>GitHub Connection Failed</h2>
-            <p style={{ color: "#aaa", marginBottom: "1.5rem", lineHeight: "1.6" }}>{error}</p>
-            <div style={{ marginBottom: "2rem" }}>
-              <p style={{ color: "#fff", marginBottom: "1rem", fontWeight: "bold" }}>
-                You can still work with local files:
-              </p>
-              <ol
-                style={{
-                  textAlign: "left",
-                  color: "#aaa",
-                  lineHeight: "1.8",
-                  paddingLeft: "1.5rem",
-                }}
-              >
-                <li>Click "Local Files" button above</li>
-                <li>Upload your english.ini file</li>
-                <li>Upload the translation file you want to edit</li>
-                <li>Start editing translations offline</li>
-              </ol>
-            </div>
-            <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-              <button
-                onClick={() => handleSourceModeChange("local")}
-                style={{
-                  backgroundColor: "#4CAF50",
-                  color: "#fff",
-                  border: "none",
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "1rem",
-                  fontWeight: "bold",
-                }}
-                title="Switch to local files mode"
-              >
-                Switch to Local Files
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                style={{
-                  backgroundColor: "#333",
-                  color: "#fff",
-                  border: "1px solid #555",
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "1rem",
-                }}
-                title="Retry loading from GitHub"
-              >
-                Retry GitHub
-              </button>
-            </div>
-          </div>
-        </div>
+        <GitHubErrorView
+          error={error}
+          onSwitchToLocal={() => handleSourceModeChange("local")}
+          onRetry={() => window.location.reload()}
+        />
       </div>
     );
   }
@@ -669,43 +798,22 @@ function App() {
         onEnglishFileUpload={handleEnglishFileUpload}
         onTranslationFileUpload={handleTranslationFileUpload}
         isUsingCache={isUsingCache}
+        lastSaveTime={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.lastSaveTime : null}
+        isAutoSaving={!sessionState.showResumePrompt && hasSavedThisRun ? sessionState.isAutoSaving : false}
+        hideControls={sessionState.showResumePrompt}
       />
 
+      {/* Session Resume Banner */}
+      {sessionState.showResumePrompt && (
+        <SessionResumeBanner
+          timestamp={initialSessionData?.timestamp || null}
+          onDiscard={handleDiscardSession}
+          onResume={handleResumeSession}
+        />
+      )}
+
       {error && sourceMode === "github" && (
-        <div
-          style={{
-            backgroundColor: isUsingCache ? "#4CAF501a" : "#ff98001a",
-            color: isUsingCache ? "#4CAF50" : "#ff9800",
-            padding: "1rem 2rem",
-            borderBottom: isUsingCache ? "1px solid #4CAF50" : "1px solid #ff9800",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <span>{error}</span>
-          {!isUsingCache && (
-            <button
-              onClick={() => handleSourceModeChange("local")}
-              style={{
-                backgroundColor: "#ff9800",
-                color: "#000",
-                border: "none",
-                padding: "0.5rem 1rem",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "bold",
-                whiteSpace: "nowrap",
-              }}
-              title="Switch to Local Mode"
-            >
-              Switch to Local Mode
-            </button>
-          )}
-        </div>
+        <StatusBanner error={error} isUsingCache={isUsingCache} onSwitchToLocal={() => handleSourceModeChange("local")} />
       )}
 
       <main
@@ -725,179 +833,22 @@ function App() {
             onTranslationFileUpload={handleTranslationFileUpload}
           />
         )}
-        {Object.keys(groupedEntries).map((section) => (
-          <div key={section} style={{ marginBottom: "3rem", position: "relative" }}>
-            {section && (
-              <h2
-                style={{
-                  color: "#888",
-                  fontSize: isMobile ? "1.1rem" : isMedium ? "1.2rem" : "1.25rem",
-                  marginBottom: "1rem",
-                  paddingBottom: "0.5rem",
-                  paddingTop: "0.5rem",
-                  borderBottom: "1px solid #333",
-                  position: "sticky",
-                  top: "var(--header-height, 112px)",
-                  backgroundColor: "#0a0a0a",
-                  zIndex: 50,
-                  marginTop: "-0.5rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <span>[{section}]</span>
-                {/* Section counts: total (white), untranslated (orange), invalid (red) — hide zeros */}
-                {(sectionStats[section]?.total ?? 0) > 0 && (
-                  <span style={{ color: "#fff", fontSize: "0.9rem" }}>({sectionStats[section]!.total})</span>
-                )}
-                {(sectionStats[section]?.untranslated ?? 0) > 0 && (
-                  <span style={{ color: "#ff9800", fontSize: "0.9rem" }}>({sectionStats[section]!.untranslated})</span>
-                )}
-                {(sectionStats[section]?.invalid ?? 0) > 0 && (
-                  <span style={{ color: "#ff4444", fontSize: "0.9rem" }}>({sectionStats[section]!.invalid})</span>
-                )}
-              </h2>
-            )}
-            {groupedEntries[section].map((entry) => (
-              <TranslationRow
-                key={`${entry.section}-${entry.key}`}
-                entry={entry}
-                onTranslationChange={handleTranslationChange}
-                screenSize={screenSize as "mobile" | "medium" | "desktop"}
-              />
-            ))}
-          </div>
-        ))}
+        <TranslationSections
+          groupedEntries={groupedEntries}
+          sectionStats={sectionStats}
+          screenSize={screenSize as "mobile" | "medium" | "desktop"}
+          onTranslationChange={handleTranslationChange}
+          onBlurSave={saveSessionImmediately}
+        />
       </main>
 
-      {/* Source Mode Change Confirmation Dialog */}
-      {showModeChangeConfirm && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              cancelModeChange();
-            }
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #444",
-              borderRadius: "8px",
-              padding: "2rem",
-              maxWidth: "500px",
-              width: "100%",
-              color: "#fff",
-            }}
-          >
-            <h3
-              style={{
-                margin: "0 0 1rem 0",
-                color: "#f44336",
-                fontSize: "1.2rem",
-              }}
-            >
-              ⚠️ Unsaved Changes
-            </h3>
-
-            <p
-              style={{
-                margin: "0 0 1.5rem 0",
-                lineHeight: "1.6",
-                color: "#ccc",
-              }}
-            >
-              You have <strong>unsaved changes</strong> that will be lost when switching from{" "}
-              <strong>{sourceMode === "github" ? "GitHub" : "Local File"}</strong> mode to{" "}
-              <strong>{pendingMode === "github" ? "GitHub" : "Local File"}</strong> mode.
-              <br />
-              <br />
-              Please save your work first or confirm to discard the changes.
-            </p>
-
-            <p
-              style={{
-                margin: "0 0 1.5rem 0",
-                fontSize: "0.85rem",
-                color: "#888",
-                fontStyle: "italic",
-              }}
-            >
-              Press <kbd style={{ padding: "0.1rem 0.3rem", backgroundColor: "#333", borderRadius: "3px" }}>ESC</kbd> to
-              cancel or{" "}
-              <kbd style={{ padding: "0.1rem 0.3rem", backgroundColor: "#333", borderRadius: "3px" }}>Enter</kbd> to
-              confirm.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                gap: "1rem",
-                justifyContent: "flex-end",
-              }}
-            >
-              <button
-                onClick={cancelModeChange}
-                style={{
-                  backgroundColor: "#2a2a2a",
-                  color: "#fff",
-                  border: "1px solid #444",
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  transition: "all 0.3s ease",
-                }}
-                title="Cancel and keep current changes"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3a3a3a";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#2a2a2a";
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmModeChange}
-                style={{
-                  backgroundColor: "#f44336",
-                  color: "#fff",
-                  border: "1px solid #f44336",
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  transition: "all 0.3s ease",
-                }}
-                title="Discard unsaved changes and switch mode"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#d32f2f";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#f44336";
-                }}
-              >
-                Discard Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModeChangeDialog
+        visible={showModeChangeConfirm}
+        currentMode={sourceMode}
+        pendingMode={pendingMode}
+        onCancel={cancelModeChange}
+        onConfirm={confirmModeChange}
+      />
     </div>
   );
 }

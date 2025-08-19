@@ -183,3 +183,100 @@ body.resizing * {
     padding: 0 1rem;
   }
 }
+
+/* Session management styles */
+.save-dot {
+  transition: opacity 0.3s ease;
+}
+
+.save-dot.pulsating {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Session resume banner styles */
+.session-banner {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  border: none;
+  border-radius: 0;
+  padding: 12px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.session-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  gap: 16px;
+}
+
+.session-banner-text {
+  color: white;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.session-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.session-banner-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.session-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.session-banner-btn.primary {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1976D2;
+  border-color: transparent;
+}
+
+.session-banner-btn.primary:hover {
+  background: white;
+}
+
+@media screen and (max-width: 600px) {
+  .session-banner-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .session-banner-text {
+    text-align: center;
+    font-size: 0.9rem;
+  }
+  
+  .session-banner-actions {
+    justify-content: center;
+  }
+}

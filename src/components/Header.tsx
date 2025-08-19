@@ -2,6 +2,7 @@ import React from "react";
 import sannyLogo from "../assets/sanny.png";
 import githubLogo from "../assets/github.svg";
 import discordLogo from "../assets/discord.svg";
+import { formatLastSaveTime } from "../utils/sessionManager";
 
 type SourceMode = "github" | "local";
 type FilterMode = "all" | "untranslated" | "invalid";
@@ -25,9 +26,12 @@ interface HeaderProps {
   onTranslationFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   isUsingCache?: boolean;
   suppressRandomize?: boolean;
+  lastSaveTime?: number | null;
+  isAutoSaving?: boolean;
+  hideControls?: boolean;
 }
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 
 const Header: React.FC<HeaderProps> = ({
   availableTranslations,
@@ -48,9 +52,42 @@ const Header: React.FC<HeaderProps> = ({
   onTranslationFileUpload,
   isUsingCache = false,
   suppressRandomize = false,
+  lastSaveTime = null,
+  isAutoSaving = false,
+  hideControls = false,
 }) => {
   // Track whether we've already randomized once
   const didRandomizeRef = useRef(false);
+  const [timeTick, setTimeTick] = useState(0);
+
+  // Refresh the "Last saved" label periodically so relative time updates
+  useEffect(() => {
+    if (!lastSaveTime) return;
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    const schedule = () => {
+      if (cancelled) return;
+      const diff = Date.now() - lastSaveTime;
+      const delay = diff < 60000 ? 10000 : 60000; // 10s for first minute, then 60s
+      timeoutId = window.setTimeout(() => {
+        if (cancelled) return;
+        setTimeTick(Date.now());
+        schedule();
+      }, delay);
+    };
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [lastSaveTime]);
+
+  const lastSavedLabel = useMemo(() => {
+    if (!lastSaveTime) return '';
+    return formatLastSaveTime(lastSaveTime);
+  }, [lastSaveTime, timeTick]);
 
   useEffect(() => {
   // Skip randomization if an initial lang was provided via query param
@@ -66,17 +103,17 @@ const Header: React.FC<HeaderProps> = ({
     }
   }, [availableTranslations, suppressRandomize]);
 
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasChanges) {
-        e.preventDefault();
-        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-        return "You have unsaved changes. Are you sure you want to leave?";
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [hasChanges]);
+  // useEffect(() => {
+  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  //     if (hasChanges) {
+  //       e.preventDefault();
+  //       e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+  //       return "You have unsaved changes. Are you sure you want to leave?";
+  //     }
+  //   };
+  //   window.addEventListener("beforeunload", handleBeforeUnload);
+  //   return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  // }, [hasChanges]);
   return (
     <header id="app-header" style={{ background: '#181818', borderBottom: '1px solid #333', padding: '0 0 8px 0', position: 'sticky', top: 0, zIndex: 100 }}>
       {/* Row 1: Logo, Name, Home, Github */}
@@ -101,6 +138,7 @@ const Header: React.FC<HeaderProps> = ({
       </div>
   </div>
 
+  {!hideControls && (
   <div className="content-width">
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 32, padding: '4px 0' }}>
         {/* Source Switch */}
@@ -137,8 +175,10 @@ const Header: React.FC<HeaderProps> = ({
         )}
     </div>
   </div>
+  )}
 
     {/* Row 3: Filters left, Save right */}
+  {!hideControls && (
   <div className="content-width">
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 0', marginTop: 2 }}>
         {/* Filters */}
@@ -216,18 +256,42 @@ const Header: React.FC<HeaderProps> = ({
           </button>
           <span className="progress-label" style={{ color: '#aaa', fontWeight: 500, fontSize: '1rem', marginLeft: 12 }}>Progress: <span style={{ color: untranslatedKeys === 0 && invalidKeys === 0 ? '#4CAF50' : '#fff', fontWeight: 700 }}>{totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%</span></span>
         </div>
-        {/* Save Button */}
-  <button
-    onClick={onSave}
-    disabled={!hasChanges}
-    className="save-btn"
-    title={hasChanges ? 'Save changes' : 'No changes to save'}
-  style={{ background: hasChanges ? '#4CAF50' : '#333', color: hasChanges ? '#fff' : '#666', border: 'none', cursor: hasChanges ? 'pointer' : 'not-allowed', marginLeft: 'auto' }}
-  >
-    Save
-  </button>
+        {/* Save Button with Session Info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+          {lastSaveTime && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#aaa', fontSize: '0.9rem' }}>
+              <div 
+                className={`save-dot ${isAutoSaving ? 'pulsating' : ''}`}
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#4CAF50',
+                }}
+              />
+              <span>Auto saved: {lastSavedLabel}</span>
+            </div>
+          )}
+          <button
+            onClick={onSave}
+            className="save-btn"
+            title={hasChanges ? 'Download (includes your changes)' : 'Download current file'}
+            style={{ 
+              background: '#4CAF50', 
+              color: '#fff', 
+              border: 'none', 
+              cursor: 'pointer',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              fontSize: '0.9rem',
+            }}
+          >
+            Download
+          </button>
+        </div>
       </div>
   </div>
+  )}
     </header>
   );
 };

@@ -147,6 +147,45 @@ export async function decodeAnsiText(response: Response): Promise<string> {
   }
 }
 
+// Fetch only the list of .ini files (excluding english.ini) from GitHub without loading any file contents
+export async function fetchGitHubFileNamesOnly(): Promise<string[]> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(GITHUB_API_URL, {
+      signal: controller.signal
+    }).catch(err => {
+      if (err.name === 'AbortError') {
+        throw new Error('Connection to GitHub timed out.');
+      }
+      throw new Error('Cannot connect to GitHub.');
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('GitHub API rate limit exceeded.');
+      }
+      throw new Error(`GitHub returned error ${response.status}.`);
+    }
+
+    const files: GitHubFile[] = await response.json();
+
+    // Filter for .ini files excluding english.ini
+    const iniFiles = files
+      .filter((file) => file.name.endsWith('.ini') && file.name !== 'english.ini')
+      .map((file) => file.name)
+      .sort();
+
+    return iniFiles;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 // Fetch file list from GitHub
 export async function fetchGitHubFileList(): Promise<{ files: string[], englishData: IniData }> {
   const controller = new AbortController();

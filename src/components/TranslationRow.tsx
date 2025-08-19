@@ -5,9 +5,10 @@ interface TranslationRowProps {
   entry: TranslationEntry;
   onTranslationChange: (section: string, key: string, value: string) => void;
   screenSize?: 'mobile' | 'medium' | 'desktop';
+  onBlurSave?: () => void;
 }
 
-const TranslationRow: React.FC<TranslationRowProps> = ({ entry, onTranslationChange, screenSize = 'desktop' }) => {
+const TranslationRow: React.FC<TranslationRowProps> = ({ entry, onTranslationChange, screenSize = 'desktop', onBlurSave }) => {
   const englishTextRef = useRef<HTMLTextAreaElement>(null);
   const translationTextRef = useRef<HTMLTextAreaElement>(null);
   
@@ -115,6 +116,9 @@ const TranslationRow: React.FC<TranslationRowProps> = ({ entry, onTranslationCha
           onChange={(e) => {
             onTranslationChange(entry.section, entry.key, e.target.value);
             autoResize(e.target);
+          }}
+          onBlur={() => {
+            if (onBlurSave) onBlurSave();
           }}
           style={{
             backgroundColor: '#2a2a2a',
