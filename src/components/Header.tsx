@@ -167,7 +167,7 @@ const Header: React.FC<HeaderProps> = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12 }}>
             <a
-              href="https://github.com/sannybuilder/translations"
+              href="https://github.com/sannybuilder/translation-tool"
               target="_blank"
               rel="noopener noreferrer"
               title="View source on GitHub"
