@@ -35,6 +35,8 @@ const TranslationSections: React.FC<TranslationSectionsProps> = ({
   
   // Refs for each section to enable scrolling
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Refs for first translation field in each section
+  const firstFieldRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
   const handleFilterClick = (section: string, filterType: FilterType) => {
     setSectionFilters(prev => ({
@@ -42,7 +44,7 @@ const TranslationSections: React.FC<TranslationSectionsProps> = ({
       [section]: prev[section] === filterType ? null : filterType
     }));
     
-    // Scroll to the section header
+    // Scroll to the section header and focus first field
     setTimeout(() => {
       const sectionElement = sectionRefs.current[section];
       if (sectionElement) {
@@ -54,6 +56,15 @@ const TranslationSections: React.FC<TranslationSectionsProps> = ({
           behavior: 'smooth'
         });
       }
+      
+      // Focus the first translation field in this section
+      setTimeout(() => {
+        const firstField = firstFieldRefs.current[section];
+        if (firstField) {
+          firstField.focus();
+          firstField.select();
+        }
+      }, 350); // Delay to allow smooth scroll to complete
     }, 50); // Small delay to ensure DOM updates
   };
 
@@ -272,7 +283,7 @@ const TranslationSections: React.FC<TranslationSectionsProps> = ({
               </h2>
             </div>
           )}
-          {filteredEntries.map((entry) => (
+          {filteredEntries.map((entry, index) => (
             <TranslationRow
               key={`${entry.section}-${entry.key}`}
               entry={entry}
@@ -280,6 +291,9 @@ const TranslationSections: React.FC<TranslationSectionsProps> = ({
               screenSize={screenSize}
               onFocusEntry={onFocusEntry}
               onBlurEntry={onBlurEntry}
+              ref={index === 0 ? (el) => {
+                if (el) firstFieldRefs.current[section] = el;
+              } : undefined}
             />
           ))}
         </div>

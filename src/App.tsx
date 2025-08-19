@@ -98,12 +98,16 @@ function App() {
   useEffect(() => {
     const handleScroll = () => {
       const scrolled = window.scrollY > 200;
-      setShowScrollTop(scrolled);
+      // Show button if scrolled OR if there are pending changes
+      const hasPendingChanges = (changeTrackerRef.current?.getStats()?.pending ?? 0) > 0;
+      setShowScrollTop(scrolled || hasPendingChanges);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    // Initial check
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [changeTrackerUpdateTrigger]); // Re-check when change tracker updates
 
   // Scroll to top function
   const scrollToTop = () => {
@@ -933,9 +937,9 @@ function App() {
         />
       )}
 
-      {/* Floating Scroll to Top Button */}
+      {/* Floating Scroll to Top Button with Pending Changes Indicator */}
       <button
-        className={`scroll-to-top ${showScrollTop ? 'visible' : ''}`}
+        className={`scroll-to-top ${showScrollTop ? 'visible' : ''} ${(changeTracker?.getStats()?.pending ?? 0) > 0 ? 'has-pending' : ''}`}
         onClick={scrollToTop}
         aria-label="Scroll to top"
         title="Scroll to top"
@@ -952,6 +956,12 @@ function App() {
             fill="currentColor"
           />
         </svg>
+        {/* Show pending changes count if there are any */}
+        {changeTracker && (changeTracker.getStats()?.pending ?? 0) > 0 && (
+          <span className="pending-badge" title={`${changeTracker.getStats()?.pending ?? 0} pending changes to review`}>
+            {changeTracker.getStats()?.pending ?? 0}
+          </span>
+        )}
       </button>
     </div>
   );

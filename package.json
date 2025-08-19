@@ -1,7 +1,12 @@
 {
-  "name": "translation-app",
+  "name": "sanny-builder-translation-tool",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "author": {
+    "name": "Seemann",
+    "email": "mail@sannybuilder.com",
+    "url": "https://github.com/x87"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
