@@ -103,7 +103,6 @@ textarea:focus {
   
   /* Better touch targets for medium screens */
   button, select, input[type="file"] + label {
-    min-height: 44px;
     min-width: 44px;
   }
   
@@ -144,9 +143,6 @@ textarea:focus {
     height: 6px;
   }
   
-  button, select, input[type="file"] + label {
-    min-height: 48px; /* Larger touch targets for mobile */
-  }
   
   textarea {
     min-height: 32px;

@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import Header from "./components/Header";
-import LocalFileEditor from "./components/LocalFileEditor";
-import StatusBanner from "./components/StatusBanner";
-import GitHubErrorView from "./components/GitHubErrorView";
-import TranslationSections from "./components/TranslationSections";
-import ModeChangeDialog from "./components/ModeChangeDialog";
-import SessionResumeBanner from "./components/SessionResumeBanner";
-import { parseIni, serializeIni, countFormatSpecifiers } from "./utils/iniParser";
-import type { IniData } from "./utils/iniParser";
-import type { TranslationEntry } from "./types/translation";
-import type { SessionData, SessionState } from "./types/session";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Header from './components/Header';
+import LocalFileEditor from './components/LocalFileEditor';
+import StatusBanner from './components/StatusBanner';
+import GitHubErrorView from './components/GitHubErrorView';
+import TranslationSections from './components/TranslationSections';
+import ModeChangeDialog from './components/ModeChangeDialog';
+import SessionResumeBanner from './components/SessionResumeBanner';
+import { parseIni, serializeIni, countFormatSpecifiers } from './utils/iniParser';
+import type { IniData } from './utils/iniParser';
+import type { TranslationEntry } from './types/translation';
+import type { SessionData, SessionState } from './types/session';
 import {
   getCachedData,
   setCachedData,
@@ -17,23 +17,18 @@ import {
   fetchTranslationFile,
   fetchGitHubFileNamesOnly,
   readLocalFile,
-} from "./utils/githubCache";
-import {
-  saveSession,
-  loadSession,
-  clearSession,
-  getAutosaveInterval,
-} from "./utils/sessionManager";
-import "./App.css";
+} from './utils/githubCache';
+import { saveSession, loadSession, clearSession, getAutosaveInterval } from './utils/sessionManager';
+import './App.css';
 
-type SourceMode = "github" | "local";
-type FilterMode = "all" | "untranslated" | "invalid";
+type SourceMode = 'github' | 'local';
+type FilterMode = 'all' | 'untranslated' | 'invalid';
 
 function App() {
   const [englishData, setEnglishData] = useState<IniData>({});
   const [translationData, setTranslationData] = useState<IniData>({});
   const [originalTranslationData, setOriginalTranslationData] = useState<IniData>({});
-  const [selectedTranslation, setSelectedTranslation] = useState<string>("");
+  const [selectedTranslation, setSelectedTranslation] = useState<string>('');
   const [availableTranslations, setAvailableTranslations] = useState<string[]>([]);
   // const [initialLangId, setInitialLangId] = useState<string | null>(null);
   const [entries, setEntries] = useState<TranslationEntry[]>([]);
@@ -41,13 +36,13 @@ function App() {
   const [stats, setStats] = useState({ total: 0, untranslated: 0, invalid: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sourceMode, setSourceMode] = useState<SourceMode>("github");
-  const [localFileName, setLocalFileName] = useState<string>("");
-  const [localEnglishFileName, setLocalEnglishFileName] = useState<string>("");
+  const [sourceMode, setSourceMode] = useState<SourceMode>('github');
+  const [localFileName, setLocalFileName] = useState<string>('');
+  const [localEnglishFileName, setLocalEnglishFileName] = useState<string>('');
   const [isUsingCache, setIsUsingCache] = useState(false);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [githubInitiallyFailed, setGithubInitiallyFailed] = useState(false);
-  const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [showModeChangeConfirm, setShowModeChangeConfirm] = useState(false);
   const [pendingMode, setPendingMode] = useState<SourceMode | null>(null);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
@@ -69,31 +64,31 @@ function App() {
   // Check screen size for responsive design
   const [screenSize, setScreenSize] = useState(() => {
     const width = window.innerWidth;
-    if (width <= 768) return "mobile";
-    if (width <= 1024) return "medium";
-    return "desktop";
+    if (width <= 768) return 'mobile';
+    if (width <= 1024) return 'medium';
+    return 'desktop';
   });
 
-  const isMobile = screenSize === "mobile";
-  const isMedium = screenSize === "medium";
+  const isMobile = screenSize === 'mobile';
+  const isMedium = screenSize === 'medium';
 
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      if (width <= 768) setScreenSize("mobile");
-      else if (width <= 1024) setScreenSize("medium");
-      else setScreenSize("desktop");
+      if (width <= 768) setScreenSize('mobile');
+      else if (width <= 1024) setScreenSize('medium');
+      else setScreenSize('desktop');
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Check for existing session on app load
   useEffect(() => {
     const existingSession = loadSession();
     if (existingSession) {
-      setSessionState(prev => ({
+      setSessionState((prev) => ({
         ...prev,
         hasSession: true,
         showResumePrompt: true,
@@ -110,21 +105,26 @@ function App() {
   // Keep a CSS variable with the header height so section headings can stick below it
   useEffect(() => {
     const setHeaderHeightVar = () => {
-      const header = document.getElementById("app-header");
+      const header = document.getElementById('app-header');
       const height = header ? header.getBoundingClientRect().height : 0;
       const effective = Math.max(Math.ceil(height), 168);
-      document.documentElement.style.setProperty("--header-height", `${effective}px`);
+      document.documentElement.style.setProperty('--header-height', `${effective}px`);
     };
 
     setHeaderHeightVar();
-    window.addEventListener("resize", setHeaderHeightVar);
+    window.addEventListener('resize', setHeaderHeightVar);
     // Also observe mutations in case header content changes (fonts, content)
     const obs = new MutationObserver(() => setHeaderHeightVar());
-    const headerEl = document.getElementById("app-header");
-    if (headerEl) obs.observe(headerEl, { childList: true, subtree: true, characterData: true });
+    const headerEl = document.getElementById('app-header');
+    if (headerEl)
+      obs.observe(headerEl, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      });
 
     return () => {
-      window.removeEventListener("resize", setHeaderHeightVar);
+      window.removeEventListener('resize', setHeaderHeightVar);
       obs.disconnect();
     };
   }, []);
@@ -138,10 +138,10 @@ function App() {
       setError(null);
       const content = await readLocalFile(file);
       const parsed = parseIni(content);
-      handleFilesLoaded(parsed, {}, file.name, "");
+      handleFilesLoaded(parsed, {}, file.name, '');
     } catch (err) {
-      console.error("Error loading local English file:", err);
-      setError("Failed to load English file");
+      console.error('Error loading local English file:', err);
+      setError('Failed to load English file');
     }
   };
 
@@ -154,10 +154,10 @@ function App() {
       setError(null);
       const content = await readLocalFile(file);
       const parsed = parseIni(content);
-      handleFilesLoaded({}, parsed, "", file.name);
+      handleFilesLoaded({}, parsed, '', file.name);
     } catch (err) {
-      console.error("Error loading local translation file:", err);
-      setError("Failed to load translation file");
+      console.error('Error loading local translation file:', err);
+      setError('Failed to load translation file');
     }
   };
 
@@ -166,7 +166,7 @@ function App() {
     englishData: IniData,
     translationData: IniData,
     englishFileName: string,
-    translationFileName: string
+    translationFileName: string,
   ) => {
     // Update English data if provided
     if (Object.keys(englishData).length > 0) {
@@ -197,7 +197,7 @@ function App() {
     if (!hasCheckedSession) {
       return;
     }
-    if (sourceMode === "local") {
+    if (sourceMode === 'local') {
       setLoading(false);
       return;
     }
@@ -214,16 +214,16 @@ function App() {
 
       // After initial load, always use cache when switching between modes
       if (hasInitiallyLoaded) {
-        const cachedFileList = getCachedData<string[]>("github_file_list");
-        const cachedEnglishData = getCachedData<IniData>("english_ini");
+        const cachedFileList = getCachedData<string[]>('github_file_list');
+        const cachedEnglishData = getCachedData<IniData>('english_ini');
 
         if (cachedFileList && cachedEnglishData) {
-          console.log("Using cached data (mode switch after initial load)");
+          console.log('Using cached data (mode switch after initial load)');
           // Only set isUsingCache if GitHub initially failed
           // This ensures the "cached" label only appears when GitHub was unavailable
           if (githubInitiallyFailed) {
             setIsUsingCache(true);
-            setError("GitHub unavailable. Using cached data.");
+            setError('GitHub unavailable. Using cached data.');
           }
           setAvailableTranslations(cachedFileList);
           setEnglishData(cachedEnglishData);
@@ -241,15 +241,15 @@ function App() {
 
       // Initial load or no cache available - try to fetch fresh data
       try {
-        console.log("Attempting to fetch fresh data from GitHub");
+        console.log('Attempting to fetch fresh data from GitHub');
 
         // Try to fetch from GitHub first
         const { files: iniFiles, englishData } = await fetchGitHubFileList();
 
         // Success! Update cache with fresh data
-        console.log("Successfully fetched fresh data from GitHub");
-        setCachedData("github_file_list", iniFiles);
-        setCachedData("english_ini", englishData);
+        console.log('Successfully fetched fresh data from GitHub');
+        setCachedData('github_file_list', iniFiles);
+        setCachedData('english_ini', englishData);
 
         setIsUsingCache(false);
         setGithubInitiallyFailed(false); // GitHub succeeded
@@ -265,14 +265,14 @@ function App() {
 
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching from GitHub, attempting to use cache:", err);
+        console.error('Error fetching from GitHub, attempting to use cache:', err);
 
         // GitHub failed, try to load from cache
-        const cachedFileList = getCachedData<string[]>("github_file_list");
-        const cachedEnglishData = getCachedData<IniData>("english_ini");
+        const cachedFileList = getCachedData<string[]>('github_file_list');
+        const cachedEnglishData = getCachedData<IniData>('english_ini');
 
         if (cachedFileList && cachedEnglishData) {
-          console.log("Using cached data (GitHub unavailable)");
+          console.log('Using cached data (GitHub unavailable)');
           setIsUsingCache(true);
           setGithubInitiallyFailed(true); // Track that GitHub initially failed
           setAvailableTranslations(cachedFileList);
@@ -286,7 +286,7 @@ function App() {
           }
 
           // Show a message that we're using cached data
-          const errorMessage = "GitHub unavailable. Using cached data.";
+          const errorMessage = 'GitHub unavailable. Using cached data.';
           setError(errorMessage);
           setLoading(false);
         } else {
@@ -294,7 +294,7 @@ function App() {
           const errorMessage =
             err instanceof Error
               ? `${err.message} Please try again or use local files.`
-              : "Failed to load translations from GitHub. Please try again or use local files.";
+              : 'Failed to load translations from GitHub. Please try again or use local files.';
           setError(errorMessage);
           setLoading(false);
         }
@@ -308,7 +308,7 @@ function App() {
   // Load selected translation from GitHub
   useEffect(() => {
     if (!hasCheckedSession) return;
-    if (selectedTranslation && sourceMode === "github" && !sessionState.showResumePrompt) {
+    if (selectedTranslation && sourceMode === 'github' && !sessionState.showResumePrompt) {
       const loadTranslation = async () => {
         const cacheKey = `translation_${selectedTranslation}`;
 
@@ -355,7 +355,7 @@ function App() {
             setHasChanges(false);
 
             // Show a message that we're using cached data
-            const errorMessage = "GitHub unavailable. Using cached data.";
+            const errorMessage = 'GitHub unavailable. Using cached data.';
             setError(errorMessage);
           } else {
             // No cache available, show error
@@ -380,24 +380,24 @@ function App() {
 
     Object.keys(englishData).forEach((section) => {
       // Skip the root section (empty string) which contains LANGID
-      if (section === "") return;
+      if (section === '') return;
 
       Object.keys(englishData[section]).forEach((key) => {
         const englishText = englishData[section][key];
-        const translatedText = translationData[section]?.[key] || "";
+        const translatedText = translationData[section]?.[key] || '';
 
-        let status: TranslationEntry["status"] = "translated";
+        let status: TranslationEntry['status'] = 'translated';
         if (!translatedText) {
-          status = "missing";
+          status = 'missing';
           untranslatedCount++;
         } else if (translatedText === englishText) {
-          status = "same";
+          status = 'same';
           untranslatedCount++;
         }
 
         // Check if format specifiers match
         let isInvalid = false;
-        if (translatedText && status === "translated") {
+        if (translatedText && status === 'translated') {
           const englishSpecifiers = countFormatSpecifiers(englishText);
           const translationSpecifiers = countFormatSpecifiers(translatedText);
 
@@ -443,7 +443,7 @@ function App() {
 
     // Compare with original to detect changes
     // First check if the specific value has changed
-    const originalValue = originalTranslationData[section]?.[key] || "";
+    const originalValue = originalTranslationData[section]?.[key] || '';
     const hasChanged = value !== originalValue;
 
     // Or do a full comparison to catch any changes
@@ -453,17 +453,29 @@ function App() {
   };
 
   // Session management functions
-  const createSessionData = useCallback((): SessionData => ({
-    timestamp: Date.now(),
-    sourceMode,
-    selectedTranslation,
-    localFileName,
-    localEnglishFileName,
-    englishData,
-    translationData,
-    originalTranslationData,
-    availableTranslations,
-  }), [sourceMode, selectedTranslation, localFileName, localEnglishFileName, englishData, translationData, originalTranslationData, availableTranslations]);
+  const createSessionData = useCallback(
+    (): SessionData => ({
+      timestamp: Date.now(),
+      sourceMode,
+      selectedTranslation,
+      localFileName,
+      localEnglishFileName,
+      englishData,
+      translationData,
+      originalTranslationData,
+      availableTranslations,
+    }),
+    [
+      sourceMode,
+      selectedTranslation,
+      localFileName,
+      localEnglishFileName,
+      englishData,
+      translationData,
+      originalTranslationData,
+      availableTranslations,
+    ],
+  );
 
   const saveSessionImmediately = useCallback(() => {
     if (sessionState.showResumePrompt) return;
@@ -473,7 +485,7 @@ function App() {
     }
     const currentSession = createSessionData();
     saveSession(currentSession);
-    setSessionState(prev => ({
+    setSessionState((prev) => ({
       ...prev,
       hasSession: true,
       isAutoSaving: false,
@@ -497,11 +509,11 @@ function App() {
 
     const session = initialSessionData;
     // Force local mode on resume to avoid any GitHub content loads
-    setSourceMode("local");
+    setSourceMode('local');
     setSelectedTranslation(session.selectedTranslation);
     // Derive sensible local filenames if they were not present in the session
-    const derivedLocalEnglishName = session.localEnglishFileName || "english.ini";
-    const derivedLocalTranslationName = session.localFileName || session.selectedTranslation || "translation.ini";
+    const derivedLocalEnglishName = session.localEnglishFileName || 'english.ini';
+    const derivedLocalTranslationName = session.localFileName || session.selectedTranslation || 'translation.ini';
     setLocalFileName(derivedLocalTranslationName);
     setLocalEnglishFileName(derivedLocalEnglishName);
     setEnglishData(session.englishData);
@@ -511,8 +523,8 @@ function App() {
     // Mirror the behavior of opening local files manually
     setHasChanges(false);
     setError(null);
-    
-    setSessionState(prev => ({
+
+    setSessionState((prev) => ({
       ...prev,
       showResumePrompt: false,
       lastSaveTime: session.timestamp,
@@ -527,11 +539,11 @@ function App() {
     (async () => {
       try {
         const iniFiles = await fetchGitHubFileNamesOnly();
-        setCachedData("github_file_list", iniFiles);
+        setCachedData('github_file_list', iniFiles);
         setAvailableTranslations(iniFiles);
       } catch (e) {
         // Non-critical: keep session's saved list if GitHub listing fails
-        console.warn("Failed to refresh GitHub file list after resume:", e);
+        console.warn('Failed to refresh GitHub file list after resume:', e);
       }
     })();
   }, [initialSessionData, startAutoSave]);
@@ -546,12 +558,12 @@ function App() {
     });
     setInitialSessionData(null);
     setHasSavedThisRun(false);
-    
+
     // Reset to initial state and trigger GitHub loading for fresh start
     setEnglishData({});
     setTranslationData({});
     setOriginalTranslationData({});
-    setSelectedTranslation("");
+    setSelectedTranslation('');
     setAvailableTranslations([]);
     setEntries([]);
     setHasChanges(false);
@@ -571,11 +583,11 @@ function App() {
       debouncedSaveTimeoutRef.current = null;
     }
 
-    setSessionState(prev => ({ ...prev, isAutoSaving: true }));
+    setSessionState((prev) => ({ ...prev, isAutoSaving: true }));
     debouncedSaveTimeoutRef.current = window.setTimeout(() => {
       const currentSession = createSessionData();
       saveSession(currentSession);
-      setSessionState(prev => ({
+      setSessionState((prev) => ({
         ...prev,
         hasSession: true,
         isAutoSaving: false,
@@ -604,13 +616,13 @@ function App() {
     // Save as UTF-8 to support all Unicode characters (Armenian, Russian, etc.)
     // UTF-8 is backward compatible with ASCII, so English and German files will work fine too
     const blob = new Blob([content], {
-      type: "text/plain;charset=utf-8",
+      type: 'text/plain;charset=utf-8',
     });
 
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = sourceMode === "github" ? selectedTranslation : localFileName || "translation.ini";
+    a.download = sourceMode === 'github' ? selectedTranslation : localFileName || 'translation.ini';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -649,7 +661,7 @@ function App() {
   const performSourceModeChange = (mode: SourceMode) => {
     setSourceMode(mode);
     setError(null);
-    if (mode === "local") {
+    if (mode === 'local') {
       // Clear all data and GitHub-specific state when switching to local
       setEnglishData({});
       setTranslationData({});
@@ -663,8 +675,8 @@ function App() {
       // Preserve hasInitiallyLoaded and githubInitiallyFailed
     } else {
       // Clear local-specific state when switching to GitHub
-      setLocalFileName("");
-      setLocalEnglishFileName("");
+      setLocalFileName('');
+      setLocalEnglishFileName('');
       // isUsingCache will be set by the useEffect based on githubInitiallyFailed
     }
   };
@@ -689,11 +701,11 @@ function App() {
   // Filter entries based on filter mode
   const filteredEntries = entries.filter((entry) => {
     switch (filterMode) {
-      case "untranslated":
-        return entry.status === "missing" || entry.status === "same";
-      case "invalid":
+      case 'untranslated':
+        return entry.status === 'missing' || entry.status === 'same';
+      case 'invalid':
         return entry.isInvalid === true;
-      case "all":
+      case 'all':
       default:
         return true;
     }
@@ -714,7 +726,7 @@ function App() {
       acc[entry.section] = { total: 0, untranslated: 0, invalid: 0 };
     }
     acc[entry.section].total += 1;
-    if (entry.status === "missing" || entry.status === "same") {
+    if (entry.status === 'missing' || entry.status === 'same') {
       acc[entry.section].untranslated += 1;
     }
     if (entry.isInvalid) {
@@ -724,29 +736,29 @@ function App() {
   }, {} as Record<string, { total: number; untranslated: number; invalid: number }>);
 
   // Show loading state
-  if (loading && sourceMode === "github") {
+  if (loading && sourceMode === 'github') {
     return (
       <div className="app">
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100vh",
-            color: "#fff",
-            gap: "1rem",
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            color: '#fff',
+            gap: '1rem',
           }}
         >
-          <div style={{ fontSize: "1.2rem" }}>Loading translations from GitHub...</div>
-          <div style={{ color: "#888", fontSize: "0.9rem" }}>This may take a few seconds</div>
+          <div style={{ fontSize: '1.2rem' }}>Loading translations from GitHub...</div>
+          <div style={{ color: '#888', fontSize: '0.9rem' }}>This may take a few seconds</div>
         </div>
       </div>
     );
   }
 
   // Show error state for GitHub but allow switching to local mode
-  if (error && sourceMode === "github" && !entries.length) {
+  if (error && sourceMode === 'github' && !entries.length) {
     return (
       <div className="app">
         <Header
@@ -771,7 +783,7 @@ function App() {
         />
         <GitHubErrorView
           error={error}
-          onSwitchToLocal={() => handleSourceModeChange("local")}
+          onSwitchToLocal={() => handleSourceModeChange('local')}
           onRetry={() => window.location.reload()}
         />
       </div>
@@ -812,18 +824,22 @@ function App() {
         />
       )}
 
-      {error && sourceMode === "github" && (
-        <StatusBanner error={error} isUsingCache={isUsingCache} onSwitchToLocal={() => handleSourceModeChange("local")} />
+      {error && sourceMode === 'github' && (
+        <StatusBanner
+          error={error}
+          isUsingCache={isUsingCache}
+          onSwitchToLocal={() => handleSourceModeChange('local')}
+        />
       )}
 
       <main
         style={{
-          padding: isMobile ? "1rem" : isMedium ? "1.5rem" : "2rem",
-          maxWidth: isMedium ? "900px" : "1200px",
-          margin: "0 auto",
+          padding: isMobile ? '1rem' : isMedium ? '1.5rem' : '2rem',
+          maxWidth: isMedium ? '900px' : '1200px',
+          margin: '0 auto',
         }}
       >
-        {sourceMode === "local" && (!localEnglishFileName || !localFileName) && (
+        {sourceMode === 'local' && (!localEnglishFileName || !localFileName) && (
           <LocalFileEditor
             onFilesLoaded={handleFilesLoaded}
             onError={setError}
@@ -836,7 +852,7 @@ function App() {
         <TranslationSections
           groupedEntries={groupedEntries}
           sectionStats={sectionStats}
-          screenSize={screenSize as "mobile" | "medium" | "desktop"}
+          screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
           onTranslationChange={handleTranslationChange}
           onBlurSave={saveSessionImmediately}
         />

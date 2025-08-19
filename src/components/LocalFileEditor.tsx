@@ -4,7 +4,12 @@ import { parseIni } from '../utils/iniParser';
 import type { IniData } from '../utils/iniParser';
 
 interface LocalFileEditorProps {
-  onFilesLoaded: (englishData: IniData, translationData: IniData, englishFileName: string, translationFileName: string) => void;
+  onFilesLoaded: (
+    englishData: IniData,
+    translationData: IniData,
+    englishFileName: string,
+    translationFileName: string,
+  ) => void;
   onError: (error: string) => void;
   localEnglishFileName: string;
   localFileName: string;
@@ -25,13 +30,15 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
 
   const isEnglishFile = (filename: string): boolean => {
     const lowercaseName = filename.toLowerCase();
-    return lowercaseName.includes('english') || 
-           lowercaseName.includes('eng') || 
-           lowercaseName === 'en.ini' ||
-           lowercaseName === 'base.ini';
+    return (
+      lowercaseName.includes('english') ||
+      lowercaseName.includes('eng') ||
+      lowercaseName === 'en.ini' ||
+      lowercaseName === 'base.ini'
+    );
   };
   const processDroppedFiles = async (files: File[]) => {
-    const iniFiles = files.filter(file => file.name.toLowerCase().endsWith('.ini'));
+    const iniFiles = files.filter((file) => file.name.toLowerCase().endsWith('.ini'));
 
     if (iniFiles.length === 0) {
       onError('Please drop INI files only');
@@ -99,7 +106,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Check if dragging files
     if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
       setIsDragging(true);
@@ -109,9 +116,9 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-  // When drag leaves, clear dragging state
-  setIsDragging(false);
+
+    // When drag leaves, clear dragging state
+    setIsDragging(false);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -122,8 +129,8 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-  setIsDragging(false);
+
+    setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -165,7 +172,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
       }}
     >
       {loadingFiles ? (
@@ -177,38 +184,44 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
         <div style={{ color: '#4CAF50' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
           <h3 style={{ marginBottom: '0.5rem' }}>Drop INI files here</h3>
-          <p style={{ fontSize: '0.9rem', color: '#aaa' }}>
-            Drop 1 or 2 INI files (English base and/or translation)
-          </p>
+          <p style={{ fontSize: '0.9rem', color: '#aaa' }}>Drop 1 or 2 INI files (English base and/or translation)</p>
         </div>
       ) : (
         <>
-          <div style={{ 
-            fontSize: '3rem', 
-            marginBottom: '1rem',
-            opacity: 0.5,
-            filter: 'grayscale(100%)'
-          }}>
+          <div
+            style={{
+              fontSize: '3rem',
+              marginBottom: '1rem',
+              opacity: 0.5,
+              filter: 'grayscale(100%)',
+            }}
+          >
             📁
           </div>
-          <h3 style={{ color: '#fff', marginBottom: '1rem' }}>
-            Local Translations
-          </h3>
+          <h3 style={{ color: '#fff', marginBottom: '1rem' }}>Local Translations</h3>
           <p style={{ color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6' }}>
             Drag and drop your INI files here, or use the buttons below
           </p>
-          
+
           {/* Show file status */}
           {(localEnglishFileName || localFileName) && (
-            <div style={{
-              backgroundColor: '#0a0a0a',
-              border: '1px solid #444',
-              borderRadius: '6px',
-              padding: '1rem',
-              marginBottom: '1.5rem',
-              maxWidth: '500px'
-            }}>
-              <h4 style={{ color: '#4CAF50', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            <div
+              style={{
+                backgroundColor: '#0a0a0a',
+                border: '1px solid #444',
+                borderRadius: '6px',
+                padding: '1rem',
+                marginBottom: '1.5rem',
+                maxWidth: '500px',
+              }}
+            >
+              <h4
+                style={{
+                  color: '#4CAF50',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.9rem',
+                }}
+              >
                 Loaded Files:
               </h4>
               <div style={{ fontSize: '0.85rem', color: '#ccc' }}>
@@ -223,100 +236,114 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                   </div>
                 )}
                 {!localEnglishFileName && (
-                  <div style={{ marginBottom: '0.25rem', color: '#666' }}>
-                    ⏳ English file: not loaded
-                  </div>
+                  <div style={{ marginBottom: '0.25rem', color: '#666' }}>⏳ English file: not loaded</div>
                 )}
                 {!localFileName && (
-                  <div style={{ marginBottom: '0.25rem', color: '#666' }}>
-                    ⏳ Translation file: not loaded
-                  </div>
+                  <div style={{ marginBottom: '0.25rem', color: '#666' }}>⏳ Translation file: not loaded</div>
                 )}
               </div>
             </div>
           )}
-          
-          <div style={{
-            backgroundColor: '#0a0a0a',
-            border: '1px solid #222',
-            borderRadius: '6px',
-            padding: '1.5rem',
-            marginBottom: '1.5rem',
-            maxWidth: '500px'
-          }}>
-            <h4 style={{ color: '#4CAF50', marginBottom: '1rem', fontSize: '1rem' }}>
+
+          <div
+            style={{
+              backgroundColor: '#0a0a0a',
+              border: '1px solid #222',
+              borderRadius: '6px',
+              padding: '1.5rem',
+              marginBottom: '1.5rem',
+              maxWidth: '500px',
+            }}
+          >
+            <h4
+              style={{
+                color: '#4CAF50',
+                marginBottom: '1rem',
+                fontSize: '1rem',
+              }}
+            >
               Quick Start
             </h4>
-            <ol style={{
-              textAlign: 'left',
-              color: '#aaa',
-              lineHeight: '1.8',
-              paddingLeft: '1.5rem',
-              margin: 0
-            }}>
-              <li>Drop or open the base and translation <strong style={{ color: '#fff' }}>.ini</strong> files.</li>
-              <li>The app uses <strong style={{ color: '#fff' }}>english.ini</strong> as the default base file; you can open a different file manually if needed.</li>
+            <ol
+              style={{
+                textAlign: 'left',
+                color: '#aaa',
+                lineHeight: '1.8',
+                paddingLeft: '1.5rem',
+                margin: 0,
+              }}
+            >
+              <li>
+                Drop or open the base and translation <strong style={{ color: '#fff' }}>.ini</strong> files.
+              </li>
+              <li>
+                The app uses <strong style={{ color: '#fff' }}>english.ini</strong> as the default base file; you can
+                open a different file manually if needed.
+              </li>
               <li>Edit translations and click "Save" to download your changes.</li>
             </ol>
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: '1rem', 
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: 'center'
-          }}>
-            <div style={{ color: '#666', fontSize: '0.9rem' }}>
-              Or open manually:
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <label style={{
-                backgroundColor: localEnglishFileName ? '#2d4a2d' : '#2a2a2a',
-                color: '#fff',
-                border: localEnglishFileName ? '1px solid #4CAF50' : '1px solid #444',
-                padding: '0.5rem 1rem',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                transition: 'all 0.3s ease',
-                display: 'inline-block'
-              }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '1rem',
+              flexDirection: isMobile ? 'column' : 'row',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ color: '#666', fontSize: '0.9rem' }}>Or open manually:</div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}
+            >
+              <label
+                style={{
+                  backgroundColor: localEnglishFileName ? '#2d4a2d' : '#2a2a2a',
+                  color: '#fff',
+                  border: localEnglishFileName ? '1px solid #4CAF50' : '1px solid #444',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.3s ease',
+                  display: 'inline-block',
+                }}
+              >
                 {localEnglishFileName ? `✅ ${localEnglishFileName}` : 'Open base file'}
-                <input
-                  type="file"
-                  accept=".ini"
-                  onChange={onEnglishFileUpload}
-                  style={{ display: 'none' }}
-                />
+                <input type="file" accept=".ini" onChange={onEnglishFileUpload} style={{ display: 'none' }} />
               </label>
-              <label style={{
-                backgroundColor: localFileName ? '#2d4a2d' : '#2a2a2a',
-                color: '#fff',
-                border: localFileName ? '1px solid #4CAF50' : '1px solid #444',
-                padding: '0.5rem 1rem',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                transition: 'all 0.3s ease',
-                display: 'inline-block'
-              }}>
+              <label
+                style={{
+                  backgroundColor: localFileName ? '#2d4a2d' : '#2a2a2a',
+                  color: '#fff',
+                  border: localFileName ? '1px solid #4CAF50' : '1px solid #444',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.3s ease',
+                  display: 'inline-block',
+                }}
+              >
                 {localFileName ? `✅ ${localFileName}` : 'Open translation file'}
-                <input
-                  type="file"
-                  accept=".ini"
-                  onChange={onTranslationFileUpload}
-                  style={{ display: 'none' }}
-                />
+                <input type="file" accept=".ini" onChange={onTranslationFileUpload} style={{ display: 'none' }} />
               </label>
             </div>
           </div>
 
-          <p style={{ 
-            color: '#666', 
-            marginTop: '1.5rem', 
-            fontSize: '0.85rem',
-            fontStyle: 'italic'
-          }}>
+          <p
+            style={{
+              color: '#666',
+              marginTop: '1.5rem',
+              fontSize: '0.85rem',
+              fontStyle: 'italic',
+            }}
+          >
             Supported: All Sanny Builder translation files (.ini format)
           </p>
         </>
