@@ -116,7 +116,6 @@ const TranslationRow = forwardRef<HTMLTextAreaElement, TranslationRowProps>(({ e
             overflow: 'hidden',
             fontFamily: 'inherit',
             fontSize: isMobile ? '0.875rem' : isMedium ? '0.9rem' : '0.95rem',
-            cursor: 'not-allowed',
             width: '100%',
             lineHeight: '1.5'
           }}

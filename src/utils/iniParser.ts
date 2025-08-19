@@ -85,12 +85,14 @@ export function serializeIni(data: IniData): string {
 }
 
 // Utility function to count format specifiers in a string
-export function countFormatSpecifiers(text: string): { percentD: number; percentS: number } {
+export function countFormatSpecifiers(text: string): { percentD: number; percentS: number; newLines: number } {
   const percentDMatches = text.match(/%d/g) || [];
   const percentSMatches = text.match(/%s/g) || [];
+  const newLineMatches = text.match(/\\n/g) || [];
   
   return {
     percentD: percentDMatches.length,
-    percentS: percentSMatches.length
+    percentS: percentSMatches.length,
+    newLines: newLineMatches.length
   };
 }

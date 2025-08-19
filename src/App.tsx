@@ -98,16 +98,15 @@ function App() {
   useEffect(() => {
     const handleScroll = () => {
       const scrolled = window.scrollY > 200;
-      // Show button if scrolled OR if there are pending changes
-      const hasPendingChanges = (changeTrackerRef.current?.getStats()?.pending ?? 0) > 0;
-      setShowScrollTop(scrolled || hasPendingChanges);
+      // Only show button when scrolled down AND sidebar is not open
+      setShowScrollTop(scrolled && !isPartialUpdatePanelOpen);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     // Initial check
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [changeTrackerUpdateTrigger]); // Re-check when change tracker updates
+  }, [isPartialUpdatePanelOpen]); // Re-check when panel opens/closes
 
   // Scroll to top function
   const scrollToTop = () => {
@@ -447,7 +446,8 @@ function App() {
 
           if (
             englishSpecifiers.percentD !== translationSpecifiers.percentD ||
-            englishSpecifiers.percentS !== translationSpecifiers.percentS
+            englishSpecifiers.percentS !== translationSpecifiers.percentS ||
+            englishSpecifiers.newLines !== translationSpecifiers.newLines
           ) {
             isInvalid = true;
             invalidCount++;
