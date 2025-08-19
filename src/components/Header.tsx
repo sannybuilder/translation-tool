@@ -119,10 +119,10 @@ const Header: React.FC<HeaderProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '16px 0 8px 0',
+            padding: isMobile ? '12px 8px 6px 0' : '16px 0px 8px 0',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16 }}>
             <a
               href="https://sannybuilder.com"
               target="_blank"
@@ -130,14 +130,14 @@ const Header: React.FC<HeaderProps> = ({
               title="Sanny Builder homepage"
               aria-label="Sanny Builder homepage"
             >
-              <img src={sannyLogo} alt="Logo" style={{ width: 40, height: 40, marginRight: 8 }} />
+              <img src={sannyLogo} alt="Logo" style={{ width: isMobile ? 32 : 40, height: isMobile ? 32 : 40, marginRight: isMobile ? 4 : 8 }} />
             </a>
             <span
               style={{
                 color: '#fff',
-                fontSize: '1.15rem',
+                fontSize: isMobile ? '0.95rem' : '1.15rem',
                 fontWeight: 700,
-                letterSpacing: 1,
+                letterSpacing: isMobile ? 0 : 1,
                 display: 'flex',
                 alignItems: 'center',
                 flexWrap: 'wrap',
@@ -145,19 +145,19 @@ const Header: React.FC<HeaderProps> = ({
               }}
             >
               <span>Translation</span>
-              <span style={{ marginLeft: '8px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+              <span style={{ marginLeft: isMobile ? '4px' : '8px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
                 Tool
                 <span
                   style={{
-                    fontSize: '0.65rem',
+                    fontSize: isMobile ? '0.55rem' : '0.65rem',
                     fontWeight: 600,
                     color: '#4CAF50',
                     backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                    padding: '2px 6px',
+                    padding: isMobile ? '1px 4px' : '2px 6px',
                     borderRadius: '4px',
                     border: '1px solid rgba(76, 175, 80, 0.3)',
                     letterSpacing: '0.5px',
-                    marginLeft: '8px',
+                    marginLeft: isMobile ? '4px' : '8px',
                   }}
                 >
                   BETA
@@ -165,7 +165,7 @@ const Header: React.FC<HeaderProps> = ({
               </span>
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12 }}>
             <a
               href="https://github.com/sannybuilder/translations"
               target="_blank"
@@ -176,19 +176,19 @@ const Header: React.FC<HeaderProps> = ({
                 background: '#222',
                 border: 'none',
                 borderRadius: 6,
-                padding: '8px 16px',
+                padding: isMobile ? '6px' : '8px 16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: isMobile ? 0 : 8,
                 color: '#fff',
                 fontWeight: 500,
-                fontSize: '1rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
                 textDecoration: 'none',
                 boxShadow: '0 1px 4px #0002',
               }}
             >
-              <img src={githubLogo} alt="GitHub" style={{ width: 24, height: 24 }} />
-              <span className="icon-btn-text">GitHub</span>
+              <img src={githubLogo} alt="GitHub" style={{ width: isMobile ? 20 : 24, height: isMobile ? 20 : 24 }} />
+              {!isMobile && <span className="icon-btn-text">GitHub</span>}
             </a>
             <a
               href="https://sannybuilder.com/discord"
@@ -200,19 +200,19 @@ const Header: React.FC<HeaderProps> = ({
                 background: '#5865F2',
                 border: 'none',
                 borderRadius: 6,
-                padding: '8px 16px',
+                padding: isMobile ? '6px' : '8px 16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: isMobile ? 0 : 8,
                 color: '#fff',
                 fontWeight: 500,
-                fontSize: '1rem',
+                fontSize: isMobile ? '0.9rem' : '1rem',
                 textDecoration: 'none',
                 boxShadow: '0 1px 4px #0002',
               }}
             >
-              <img src={discordLogo} alt="Discord" style={{ width: 24, height: 24 }} />
-              <span className="icon-btn-text">Discord</span>
+              <img src={discordLogo} alt="Discord" style={{ width: isMobile ? 20 : 24, height: isMobile ? 20 : 24 }} />
+              {!isMobile && <span className="icon-btn-text">Discord</span>}
             </a>
           </div>
         </div>
@@ -225,21 +225,22 @@ const Header: React.FC<HeaderProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-start',
-              gap: 32,
-              padding: '4px 0',
+              gap: isMobile ? 8 : 32,
+              padding: isMobile ? '2px 0' : '4px 0',
+              flexWrap: isMobile && sourceMode === 'local' ? 'wrap' : 'nowrap',
             }}
           >
             {/* Source Switch */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16 }}>
               <span
                 style={{
                   color: '#aaa',
                   fontWeight: 500,
-                  fontSize: '1rem',
-                  marginRight: 8,
+                  fontSize: isMobile ? '0.85rem' : '1rem',
+                  marginRight: isMobile ? 4 : 8,
                 }}
               >
-                Source
+                {isMobile ? 'Src' : 'Source'}
               </span>
               {isMobile ? (
                 <select
@@ -250,9 +251,9 @@ const Header: React.FC<HeaderProps> = ({
                     color: '#fff',
                     border: '1px solid #444',
                     borderRadius: '4px',
-                    padding: '6px 12px',
+                    padding: isMobile ? '4px 8px' : '6px 12px',
                     fontWeight: 500,
-                    fontSize: '0.95rem',
+                    fontSize: isMobile ? '0.85rem' : '0.95rem',
                     cursor: 'pointer',
                     outline: 'none',
                   }}
@@ -303,18 +304,18 @@ const Header: React.FC<HeaderProps> = ({
             </div>
             {/* Language selector or upload buttons */}
             {sourceMode === 'github' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 12 }}>
                 <label
                   htmlFor="language-selector"
                   className="language-label"
                   style={{
                     color: '#aaa',
                     fontWeight: 500,
-                    fontSize: '1rem',
-                    marginRight: 8,
+                    fontSize: isMobile ? '0.85rem' : '1rem',
+                    marginRight: isMobile ? 4 : 8,
                   }}
                 >
-                  Language:
+                  {isMobile ? 'Lang:' : 'Language:'}
                 </label>
                 <select
                   id="language-selector"
@@ -327,10 +328,10 @@ const Header: React.FC<HeaderProps> = ({
                     color: '#fff',
                     border: '1px solid #444',
                     borderRadius: 6,
-                    padding: '8px 16px',
-                    fontSize: '1rem',
+                    padding: isMobile ? '4px 8px' : '8px 16px',
+                    fontSize: isMobile ? '0.85rem' : '1rem',
                     fontWeight: 500,
-                    minWidth: 120,
+                    minWidth: isMobile ? 80 : 120,
                   }}
                 >
                   {availableTranslations.map((lang) => {
@@ -345,15 +346,15 @@ const Header: React.FC<HeaderProps> = ({
                 </select>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flex: isMobile ? 1 : 'initial' }}>
                 <label
                   style={{
                     color: '#aaa',
                     fontWeight: 500,
-                    fontSize: '1rem',
+                    fontSize: isMobile ? '0.85rem' : '1rem',
                   }}
                 >
-                  English (Base):
+                  {isMobile ? 'EN:' : 'English (Base):'}
                 </label>
                 <input
                   type="file"
@@ -369,24 +370,28 @@ const Header: React.FC<HeaderProps> = ({
                     color: '#fff',
                     border: '1px solid #444',
                     borderRadius: 6,
-                    padding: '8px 16px',
-                    fontSize: '1rem',
+                    padding: isMobile ? '4px 8px' : '8px 16px',
+                    fontSize: isMobile ? '0.85rem' : '1rem',
                     fontWeight: 500,
                     cursor: 'pointer',
-                    minWidth: 120,
+                    minWidth: isMobile ? 70 : 120,
+                    maxWidth: isMobile ? 100 : 'none',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {localEnglishFileName || 'Choose File'}
+                  {isMobile && localEnglishFileName ? '✓' + localEnglishFileName.substring(0, 8) : (localEnglishFileName || 'Choose File')}
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flex: isMobile ? 1 : 'initial' }}>
                   <label
                     style={{
                       color: '#aaa',
                       fontWeight: 500,
-                      fontSize: '1rem',
+                      fontSize: isMobile ? '0.85rem' : '1rem',
                     }}
                   >
-                    Translation:
+                    {isMobile ? 'TR:' : 'Translation:'}
                   </label>
                   <input
                     type="file"
@@ -402,14 +407,18 @@ const Header: React.FC<HeaderProps> = ({
                       color: '#fff',
                       border: '1px solid #444',
                       borderRadius: 6,
-                      padding: '8px 16px',
-                      fontSize: '1rem',
+                      padding: isMobile ? '4px 8px' : '8px 16px',
+                      fontSize: isMobile ? '0.85rem' : '1rem',
                       fontWeight: 500,
                       cursor: 'pointer',
-                      minWidth: 120,
+                      minWidth: isMobile ? 70 : 120,
+                      maxWidth: isMobile ? 100 : 'none',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {localFileName || 'Choose File'}
+                    {isMobile && localFileName ? '✓' + localFileName.substring(0, 8) : (localFileName || 'Choose File')}
                   </label>
                 </div>
               </div>
@@ -432,7 +441,7 @@ const Header: React.FC<HeaderProps> = ({
             }}
           >
             {/* Filters and Desktop Progress */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8 }}>
               <button
                 className="filter-btn"
                 onClick={() => onFilterChange && onFilterChange('all')}
@@ -441,8 +450,8 @@ const Header: React.FC<HeaderProps> = ({
                   color: '#fff',
                   border: filterMode === 'all' ? '1px solid #fff' : '1px solid #444',
                   borderRadius: 4,
-                  padding: '4px 6px',
-                  fontSize: '0.9rem',
+                  padding: isMobile ? '3px 5px' : '4px 6px',
+                  fontSize: isMobile ? '0.8rem' : '0.9rem',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -464,17 +473,17 @@ const Header: React.FC<HeaderProps> = ({
                     textAlign: 'center',
                   }}
                 >
-                  All
+                  {!isMobile && 'All'}
                 </span>
                 <span
                   style={{
                     fontWeight: 700,
                     whiteSpace: 'nowrap',
                     flex: '0 0 auto',
-                    fontSize: '0.9rem',
+                    fontSize: isMobile ? '0.8rem' : '0.9rem',
                   }}
                 >
-                  ({totalKeys})
+                  {isMobile ? totalKeys : `(${totalKeys})`}
                 </span>
               </button>
               <button
@@ -486,8 +495,8 @@ const Header: React.FC<HeaderProps> = ({
                   color: '#ff9800',
                   border: filterMode === 'untranslated' ? '1px solid #ff9800' : '1px solid #444',
                   borderRadius: 4,
-                  padding: '4px 6px',
-                  fontSize: '0.9rem',
+                  padding: isMobile ? '3px 5px' : '4px 6px',
+                  fontSize: isMobile ? '0.8rem' : '0.9rem',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -509,7 +518,7 @@ const Header: React.FC<HeaderProps> = ({
                     textAlign: 'center',
                   }}
                 >
-                  Untranslated
+                  {isMobile ? '🔍' : 'Untranslated'}
                 </span>
                 <span
                   style={{
@@ -517,10 +526,10 @@ const Header: React.FC<HeaderProps> = ({
                     whiteSpace: 'nowrap',
                     flex: '0 0 auto',
                     color: '#ff9800',
-                    fontSize: '0.9rem',
+                    fontSize: isMobile ? '0.8rem' : '0.9rem',
                   }}
                 >
-                  ({untranslatedKeys})
+                  {isMobile ? untranslatedKeys : `(${untranslatedKeys})`}
                 </span>
               </button>
               <button
@@ -532,8 +541,8 @@ const Header: React.FC<HeaderProps> = ({
                   color: '#ff4444',
                   border: filterMode === 'invalid' ? '1px solid #ff4444' : '1px solid #444',
                   borderRadius: 4,
-                  padding: '4px 6px',
-                  fontSize: '0.9rem',
+                  padding: isMobile ? '3px 5px' : '4px 6px',
+                  fontSize: isMobile ? '0.8rem' : '0.9rem',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -555,7 +564,7 @@ const Header: React.FC<HeaderProps> = ({
                     textAlign: 'center',
                   }}
                 >
-                  Invalid
+                  {isMobile ? '⚠️' : 'Invalid'}
                 </span>
                 <span
                   style={{
@@ -563,10 +572,10 @@ const Header: React.FC<HeaderProps> = ({
                     whiteSpace: 'nowrap',
                     flex: '0 0 auto',
                     color: '#ff4444',
-                    fontSize: '0.9rem',
+                    fontSize: isMobile ? '0.8rem' : '0.9rem',
                   }}
                 >
-                  ({invalidKeys})
+                  {isMobile ? invalidKeys : `(${invalidKeys})`}
                 </span>
               </button>
               {!isMobile && (
@@ -599,7 +608,7 @@ const Header: React.FC<HeaderProps> = ({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
+                  gap: isMobile ? '4px' : '12px',
                 }}
               >
                 <button
@@ -611,27 +620,27 @@ const Header: React.FC<HeaderProps> = ({
                     color: '#fff',
                     border: 'none',
                     cursor: 'pointer',
-                    padding: '8px 16px',
+                    padding: isMobile ? '4px 8px' : '8px 16px',
                     borderRadius: '4px',
-                    fontSize: '0.9rem',
+                    fontSize: isMobile ? '0.8rem' : '0.9rem',
                     fontWeight: 'bold',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: isMobile ? '4px' : '8px',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                     transition: 'all 0.3s ease',
                   }}
                 >
-                  {isMobile ? 'Review' : 'Review Changes'}
+                  {isMobile ? '✓' : 'Review Changes'}
                   <span
                     style={{
                       backgroundColor: '#fff',
                       color: '#4CAF50',
                       borderRadius: '12px',
-                      padding: '2px 8px',
-                      fontSize: '0.85rem',
+                      padding: isMobile ? '1px 6px' : '2px 8px',
+                      fontSize: isMobile ? '0.75rem' : '0.85rem',
                       fontWeight: 'bold',
-                      minWidth: '24px',
+                      minWidth: isMobile ? '20px' : '24px',
                       textAlign: 'center',
                     }}
                   >

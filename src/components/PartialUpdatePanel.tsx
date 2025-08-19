@@ -11,6 +11,7 @@ interface PartialUpdatePanelProps {
   onClose: () => void;
   onDownloadFullFile?: () => void;
   onUndo?: (section: string, key: string, originalValue: string) => void;
+  isMobile?: boolean;
 }
 
 const PartialUpdatePanel: React.FC<PartialUpdatePanelProps> = ({
@@ -22,6 +23,7 @@ const PartialUpdatePanel: React.FC<PartialUpdatePanelProps> = ({
   onClose,
   onDownloadFullFile,
   onUndo,
+  isMobile = false,
 }) => {
   const [unsubmittedChanges, setUnsubmittedChanges] = useState<TrackedChange[]>([]);
   const [selectedChanges, setSelectedChanges] = useState<Set<string>>(new Set());
@@ -231,6 +233,22 @@ ${patch}
 
   return (
     <>
+      {/* Overlay backdrop for mobile */}
+      {isOpen && isMobile && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 998,
+          }}
+          onClick={onClose}
+        />
+      )}
+      
       {/* Partial Update Panel */}
       {isOpen && (
         <div
@@ -239,26 +257,28 @@ ${patch}
             right: 0,
             top: 0,
             bottom: 0,
-            width: '400px',
+            width: isMobile ? '100%' : '400px',
             backgroundColor: '#1a1a1a',
-            borderLeft: '1px solid #333',
+            borderLeft: !isMobile ? '1px solid #333' : 'none',
             zIndex: 999,
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '-4px 0 12px rgba(0,0,0,0.5)',
+            boxShadow: !isMobile ? '-4px 0 12px rgba(0,0,0,0.5)' : 'none',
+            transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.3s ease-in-out',
           }}
         >
           {/* Header */}
           <div
             style={{
-              padding: '1rem',
+              padding: isMobile ? '0.75rem' : '1rem',
               borderBottom: '1px solid #333',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
             }}
           >
-            <h3 style={{ margin: 0, color: '#fff' }}>Review Changes</h3>
+            <h3 style={{ margin: 0, color: '#fff', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>Review Changes</h3>
             <button
               onClick={onClose}
               style={{
@@ -276,12 +296,12 @@ ${patch}
           {/* Stats */}
           <div
             style={{
-              padding: '1rem',
+              padding: isMobile ? '0.75rem' : '1rem',
               backgroundColor: '#2a2a2a',
               borderBottom: '1px solid #333',
             }}
           >
-            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#888' }}>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: isMobile ? '0.85rem' : '0.9rem', color: '#888' }}>
               <span>Pending: <strong style={{ color: '#4CAF50' }}>{stats.pending}</strong></span>
               <span>Sections: <strong style={{ color: '#888' }}>{stats.sections}</strong></span>
             </div>
@@ -291,11 +311,11 @@ ${patch}
           {/* Submission Options */}
           <div
             style={{
-              padding: '1rem',
+              padding: isMobile ? '0.75rem' : '1rem',
               borderBottom: '1px solid #333',
             }}
           >
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: '0.9rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: isMobile ? '0.85rem' : '0.9rem' }}>
               Submission Method:
             </label>
             <select
@@ -321,7 +341,7 @@ ${patch}
           {/* Toolbar */}
           <div
             style={{
-              padding: '0.5rem 1rem',
+              padding: isMobile ? '0.5rem 0.75rem' : '0.5rem 1rem',
               borderBottom: '1px solid #333',
               display: 'flex',
               gap: '0.5rem',
@@ -332,27 +352,27 @@ ${patch}
             <button
               onClick={handleSelectAll}
               style={{
-                padding: '0.25rem 0.75rem',
+                padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem',
                 backgroundColor: '#2a2a2a',
                 color: '#fff',
                 border: '1px solid #444',
                 borderRadius: '4px',
-                fontSize: '0.85rem',
+                fontSize: isMobile ? '0.8rem' : '0.85rem',
                 cursor: 'pointer',
               }}
             >
-              {selectedChanges.size === unsubmittedChanges.length ? 'Deselect All' : 'Select All'}
+              {selectedChanges.size === unsubmittedChanges.length ? (isMobile ? 'Deselect' : 'Deselect All') : (isMobile ? 'Select' : 'Select All')}
             </button>
             {unsubmittedChanges.length > 0 && (
               <button
                 onClick={handleUndoAll}
                 style={{
-                  padding: '0.25rem 0.75rem',
+                  padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem',
                   backgroundColor: '#2a2a2a',
                   color: '#bbb',
                   border: '1px solid #555',
                   borderRadius: '4px',
-                  fontSize: '0.85rem',
+                  fontSize: isMobile ? '0.8rem' : '0.85rem',
                   cursor: 'pointer',
                 }}
                 title="Undo all changes"
@@ -360,13 +380,13 @@ ${patch}
                 Undo All
               </button>
             )}
-            <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#888', fontSize: '0.85rem' }}>
+            <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#888', fontSize: isMobile ? '0.8rem' : '0.85rem' }}>
               <input
                 type="checkbox"
                 checked={groupBySection}
                 onChange={(e) => setGroupBySection(e.target.checked)}
               />
-              Group by section
+              {isMobile ? 'Group' : 'Group by section'}
             </label>
           </div>
 
@@ -375,7 +395,9 @@ ${patch}
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '1rem',
+              padding: isMobile ? '0.75rem' : '1rem',
+              overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             {Object.entries(groupedChanges).map(([sectionName, changes]) => (
@@ -433,7 +455,7 @@ ${patch}
                   <div
                     key={change.id}
                     style={{
-                      padding: '0.75rem',
+                      padding: isMobile ? '0.5rem' : '0.75rem',
                       marginBottom: '0.5rem',
                       backgroundColor: selectedChanges.has(change.id) ? '#2a3a2a' : '#242424',
                       border: `1px solid ${selectedChanges.has(change.id) ? '#4CAF50' : '#333'}`,
@@ -453,17 +475,17 @@ ${patch}
                       />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div style={{ color: '#888', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                          <div style={{ color: '#888', fontSize: isMobile ? '0.75rem' : '0.8rem', fontFamily: 'monospace' }}>
                             {change.key}
                           </div>
                         </div>
                         <div style={{ marginTop: '0.25rem' }}>
                           {change.originalValue && (
-                            <div style={{ color: '#ff4444', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                            <div style={{ color: '#ff4444', fontSize: isMobile ? '0.8rem' : '0.85rem', marginBottom: '0.25rem', wordBreak: 'break-word' }}>
                               - {change.originalValue}
                             </div>
                           )}
-                          <div style={{ color: '#4CAF50', fontSize: '0.85rem' }}>
+                          <div style={{ color: '#4CAF50', fontSize: isMobile ? '0.8rem' : '0.85rem', wordBreak: 'break-word' }}>
                             + {change.newValue}
                           </div>
                         </div>
@@ -503,7 +525,7 @@ ${patch}
           {/* Submit Button */}
           <div
             style={{
-              padding: '1rem',
+              padding: isMobile ? '0.75rem' : '1rem',
               borderTop: '1px solid #333',
             }}
           >

@@ -984,6 +984,7 @@ function App() {
             // Update the translation data with the original value
             handleTranslationChange(section, key, originalValue);
           }}
+          isMobile={isMobile}
         />
       )}
 
