@@ -14,7 +14,7 @@ A web-based translation editor for Sanny Builder language files. This applicatio
   - Translated (green)
 - **Progress Statistics**: Track overall translation progress with completion percentage
 - **Export Functionality**: Download edited translations as properly formatted .ini files
-- **Windows-1252 Encoding Support**: Proper handling of special characters used in translation files
+- **ANSI Encoding Support**: Proper handling of special characters used in translation files
 - **Sticky Section Headers**: Easy navigation through large translation files
 - **Responsive Design**: Mobile-friendly interface that adapts to different screen sizes
 
