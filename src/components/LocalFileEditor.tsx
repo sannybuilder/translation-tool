@@ -21,10 +21,8 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
   onTranslationFileUpload,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [dragCounter, setDragCounter] = useState(0);
   const [loadingFiles, setLoadingFiles] = useState(false);
 
-  // Identify if a file is likely the English base file
   const isEnglishFile = (filename: string): boolean => {
     const lowercaseName = filename.toLowerCase();
     return lowercaseName.includes('english') || 
@@ -32,13 +30,8 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
            lowercaseName === 'en.ini' ||
            lowercaseName === 'base.ini';
   };
-
-  // Process dropped files
   const processDroppedFiles = async (files: File[]) => {
-    // Filter only INI files
-    const iniFiles = files.filter(file => 
-      file.name.toLowerCase().endsWith('.ini')
-    );
+    const iniFiles = files.filter(file => file.name.toLowerCase().endsWith('.ini'));
 
     if (iniFiles.length === 0) {
       onError('Please drop INI files only');
@@ -46,33 +39,31 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
     }
 
     if (iniFiles.length > 2) {
-      onError('Please drop exactly 2 INI files (base language and translation)');
+      onError('Please drop at most 2 INI files (base language and translation)');
       return;
     }
 
     setLoadingFiles(true);
 
     try {
-      // Identify which file is English and which is translation
       let englishFile: File | null = null;
       let translationFile: File | null = null;
 
       if (iniFiles.length === 1) {
-        // Single file dropped - determine if it's English or translation
         const file = iniFiles[0];
+        const fileContent = await readLocalFile(file);
+        const parsedData = parseIni(fileContent);
+
         if (isEnglishFile(file.name)) {
           englishFile = file;
-          onError('Please also drop a translation file to edit');
+          onFilesLoaded(parsedData, {}, file.name, '');
         } else {
           translationFile = file;
-          onError('Please also drop the English base file');
+          onFilesLoaded({}, parsedData, '', file.name);
         }
-        setLoadingFiles(false);
-        return;
       } else if (iniFiles.length === 2) {
-        // Two files dropped - identify which is which
         const [file1, file2] = iniFiles;
-        
+
         if (isEnglishFile(file1.name)) {
           englishFile = file1;
           translationFile = file2;
@@ -80,31 +71,21 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
           englishFile = file2;
           translationFile = file1;
         } else {
-          // Neither file is clearly English - use file names to guess
-          // Assume the first one alphabetically is the base (English)
           const sortedFiles = iniFiles.sort((a, b) => a.name.localeCompare(b.name));
           englishFile = sortedFiles[0];
           translationFile = sortedFiles[1];
           console.log(`Guessing base language: ${englishFile.name}, translation: ${translationFile.name}`);
         }
-      }
 
-      if (englishFile && translationFile) {
-        // Load both files
         const [englishContent, translationContent] = await Promise.all([
           readLocalFile(englishFile),
-          readLocalFile(translationFile)
+          readLocalFile(translationFile),
         ]);
 
         const englishData = parseIni(englishContent);
         const translationData = parseIni(translationContent);
 
-        onFilesLoaded(
-          englishData,
-          translationData,
-          englishFile.name,
-          translationFile.name
-        );
+        onFilesLoaded(englishData, translationData, englishFile.name, translationFile.name);
       }
     } catch (err) {
       console.error('Error processing dropped files:', err);
@@ -119,8 +100,6 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    setDragCounter(prev => prev + 1);
-    
     // Check if dragging files
     if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
       setIsDragging(true);
@@ -131,13 +110,8 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    setDragCounter(prev => {
-      const newCounter = prev - 1;
-      if (newCounter === 0) {
-        setIsDragging(false);
-      }
-      return newCounter;
-    });
+  // When drag leaves, clear dragging state
+  setIsDragging(false);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -149,8 +123,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    setIsDragging(false);
-    setDragCounter(0);
+  setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -167,10 +140,9 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
   })();
 
   const isMobile = screenSize === 'mobile';
-  const isMedium = screenSize === 'medium';
 
   if (localEnglishFileName && localFileName) {
-    // Files are already loaded, don't show the upload interface
+    // Both files are loaded, don't show the upload interface
     return null;
   }
 
@@ -206,7 +178,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
           <h3 style={{ marginBottom: '0.5rem' }}>Drop INI files here</h3>
           <p style={{ fontSize: '0.9rem', color: '#aaa' }}>
-            Drop 2 INI files (English base + translation)
+            Drop 1 or 2 INI files (English base and/or translation)
           </p>
         </div>
       ) : (
@@ -220,11 +192,49 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
             📁
           </div>
           <h3 style={{ color: '#fff', marginBottom: '1rem' }}>
-            Welcome to Local File Mode
+            Local Translations
           </h3>
           <p style={{ color: '#aaa', marginBottom: '1.5rem', lineHeight: '1.6' }}>
             Drag and drop your INI files here, or use the buttons below
           </p>
+          
+          {/* Show file status */}
+          {(localEnglishFileName || localFileName) && (
+            <div style={{
+              backgroundColor: '#0a0a0a',
+              border: '1px solid #444',
+              borderRadius: '6px',
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              maxWidth: '500px'
+            }}>
+              <h4 style={{ color: '#4CAF50', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                Loaded Files:
+              </h4>
+              <div style={{ fontSize: '0.85rem', color: '#ccc' }}>
+                {localEnglishFileName && (
+                  <div style={{ marginBottom: '0.25rem' }}>
+                    ✅ English: <span style={{ color: '#fff' }}>{localEnglishFileName}</span>
+                  </div>
+                )}
+                {localFileName && (
+                  <div style={{ marginBottom: '0.25rem' }}>
+                    ✅ Translation: <span style={{ color: '#fff' }}>{localFileName}</span>
+                  </div>
+                )}
+                {!localEnglishFileName && (
+                  <div style={{ marginBottom: '0.25rem', color: '#666' }}>
+                    ⏳ English file: not loaded
+                  </div>
+                )}
+                {!localFileName && (
+                  <div style={{ marginBottom: '0.25rem', color: '#666' }}>
+                    ⏳ Translation file: not loaded
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           
           <div style={{
             backgroundColor: '#0a0a0a',
@@ -235,7 +245,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
             maxWidth: '500px'
           }}>
             <h4 style={{ color: '#4CAF50', marginBottom: '1rem', fontSize: '1rem' }}>
-              Quick Start:
+              Quick Start
             </h4>
             <ol style={{
               textAlign: 'left',
@@ -244,14 +254,9 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
               paddingLeft: '1.5rem',
               margin: 0
             }}>
-              <li>Drag and drop <strong style={{ color: '#fff' }}>2 INI files</strong> onto this area</li>
-              <li>The app will automatically identify:
-                <ul style={{ marginTop: '0.5rem', paddingLeft: '1rem' }}>
-                  <li>Base language (english.ini or similar)</li>
-                  <li>Translation file (e.g., german.ini, french.ini)</li>
-                </ul>
-              </li>
-              <li>Start editing immediately</li>
+              <li>Drop or open the base and translation <strong style={{ color: '#fff' }}>.ini</strong> files.</li>
+              <li>The app uses <strong style={{ color: '#fff' }}>english.ini</strong> as the default base file; you can open a different file manually if needed.</li>
+              <li>Edit translations and click "Save" to download your changes.</li>
             </ol>
           </div>
 
@@ -262,13 +267,13 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
             alignItems: 'center'
           }}>
             <div style={{ color: '#666', fontSize: '0.9rem' }}>
-              Or open files manually:
+              Or open manually:
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
               <label style={{
-                backgroundColor: '#2a2a2a',
+                backgroundColor: localEnglishFileName ? '#2d4a2d' : '#2a2a2a',
                 color: '#fff',
-                border: '1px solid #444',
+                border: localEnglishFileName ? '1px solid #4CAF50' : '1px solid #444',
                 padding: '0.5rem 1rem',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -276,7 +281,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 transition: 'all 0.3s ease',
                 display: 'inline-block'
               }}>
-                {localEnglishFileName || 'Open english.ini'}
+                {localEnglishFileName ? `✅ ${localEnglishFileName}` : 'Open base file'}
                 <input
                   type="file"
                   accept=".ini"
@@ -285,9 +290,9 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 />
               </label>
               <label style={{
-                backgroundColor: '#2a2a2a',
+                backgroundColor: localFileName ? '#2d4a2d' : '#2a2a2a',
                 color: '#fff',
-                border: '1px solid #444',
+                border: localFileName ? '1px solid #4CAF50' : '1px solid #444',
                 padding: '0.5rem 1rem',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -295,7 +300,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 transition: 'all 0.3s ease',
                 display: 'inline-block'
               }}>
-                {localFileName || 'Open translation'}
+                {localFileName ? `✅ ${localFileName}` : 'Open translation file'}
                 <input
                   type="file"
                   accept=".ini"

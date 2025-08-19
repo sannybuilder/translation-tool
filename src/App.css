@@ -1,7 +1,41 @@
+@media (max-width: 600px) {
+  .home-link {
+    display: none;
+  }
+}
+.save-btn {
+  border-radius: 6px;
+  padding: 10px 24px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  text-transform: none;
+}
+.save-btn:disabled {
+  opacity: 0.65;
+  transform: none;
+  box-shadow: none;
+}
+.save-btn:focus-visible {
+  outline: 2px solid rgba(76,175,80,0.35);
+  outline-offset: 2px;
+}
+/* Hide button text in mobile view for GitHub and Discord buttons */
+@media (max-width: 600px) {
+  .icon-btn-text {
+    display: none;
+  }
+}
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+:root {
+  /* Fallback header height until JS measures it */
+  --header-height: 168px;
 }
 
 body {
@@ -13,11 +47,14 @@ body {
   background-color: #0a0a0a;
   color: #ffffff;
   min-height: 100vh;
+  /* Prevent the page from shrinking too small on narrow viewports */
+  min-width: 360px;
 }
 
 .app {
   min-height: 100vh;
   background-color: #0a0a0a;
+  min-width: 360px;
 }
 
 /* Scrollbar styles */
@@ -49,16 +86,6 @@ textarea {
 textarea:focus {
   outline: none;
   border-color: #4CAF50 !important;
-}
-
-/* Button hover effect */
-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-button:active:not(:disabled) {
-  transform: translateY(0);
 }
 
 /* Media queries for responsive design */
@@ -97,6 +124,19 @@ button:active:not(:disabled) {
   :root {
     font-size: 14px;
   }
+  /* Hide language label on mobile to save space */
+  .language-label {
+    display: none;
+  }
+  /* Hide Progress label on mobile for compactness */
+  .progress-label {
+    display: none;
+  }
+  /* Compact filter buttons on mobile */
+  .filter-btn {
+    max-width: 64px;
+    overflow: hidden;
+  }
   
   /* Mobile-specific styles */
   ::-webkit-scrollbar {
@@ -122,4 +162,24 @@ button:active:not(:disabled) {
 /* Disable transitions during resize to prevent jank */
 body.resizing * {
   transition: none !important;
+}
+
+/* Shared centered content width used by main and header */
+.content-width {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem; /* horizontal padding to match main */
+}
+
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .content-width {
+    max-width: 900px;
+    padding: 0 1.5rem;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .content-width {
+    padding: 0 1rem;
+  }
 }

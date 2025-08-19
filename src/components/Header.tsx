@@ -1,4 +1,7 @@
 import React from "react";
+import sannyLogo from "../assets/sanny.png";
+import githubLogo from "../assets/github.svg";
+import discordLogo from "../assets/discord.svg";
 
 type SourceMode = "github" | "local";
 type FilterMode = "all" | "untranslated" | "invalid";
@@ -21,7 +24,10 @@ interface HeaderProps {
   onEnglishFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onTranslationFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   isUsingCache?: boolean;
+  suppressRandomize?: boolean;
 }
+
+import { useEffect, useRef } from "react";
 
 const Header: React.FC<HeaderProps> = ({
   availableTranslations,
@@ -41,514 +47,187 @@ const Header: React.FC<HeaderProps> = ({
   onEnglishFileUpload,
   onTranslationFileUpload,
   isUsingCache = false,
+  suppressRandomize = false,
 }) => {
-  // Check screen size for responsive design
-  const [screenSize, setScreenSize] = React.useState(() => {
-    const width = window.innerWidth;
-    if (width <= 768) return "mobile";
-    if (width <= 1024) return "medium";
-    if (width <= 1200) return "large";
-    return "desktop";
-  });
+  // Track whether we've already randomized once
+  const didRandomizeRef = useRef(false);
 
-  const isMobile = screenSize === "mobile";
-  const isMedium = screenSize === "medium";
-  const isLarge = screenSize === "large";
-  const isDesktop = screenSize === "desktop";
+  useEffect(() => {
+  // Skip randomization if an initial lang was provided via query param
+    if (suppressRandomize) return;
+  // Only randomize once on the very first availability of translations.
+  // Randomize only when there's no selection yet (selectedTranslation is empty).
+    if (!didRandomizeRef.current && availableTranslations.length > 0 && selectedTranslation === '') {
+      const randomLang = availableTranslations[Math.floor(Math.random() * availableTranslations.length)];
+      if (randomLang !== selectedTranslation) {
+        onTranslationChange(randomLang);
+      }
+      didRandomizeRef.current = true;
+    }
+  }, [availableTranslations, suppressRandomize]);
 
-  React.useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      if (width <= 768) {
-        setScreenSize("mobile");
-      } else if (width <= 1024) {
-        setScreenSize("medium");
-      } else {
-        setScreenSize("desktop");
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
       }
     };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasChanges]);
   return (
-    <header
-      style={{
-        backgroundColor: "#1a1a1a",
-        padding: isMobile ? "1rem" : isMedium ? "1rem 1.5rem" : "1rem 2rem",
-        borderBottom: "1px solid #333",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: isLarge ? "row" : "column",
-          justifyContent: isMobile || isMedium ? "flex-start" : "space-between",
-          gap: isMobile || isMedium ? "1rem" : "0",
-          marginBottom: "1rem",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: isMobile || isMedium ? "column" : "row",
-            gap: isMobile ? "1rem" : isMedium ? "1.5rem" : "2rem",
-            flexWrap: "wrap",
-          }}
-        >
-          {/* Title and GitHub Link */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.25rem",
-              flex: "1 1 auto",
-              justifyContent: "space-between",
-              minWidth: 0,
-            }}
-          >
-            <h1
-              style={{
-                color: "#fff",
-                fontSize: isMobile
-                  ? "1.25rem"
-                  : isMedium
-                  ? "1.35rem"
-                  : "1.5rem",
-                margin: 0,
-              }}
-            >
-              Sanny Builder Translation Editor
-            </h1>
-            <a
-              href="https://github.com/sannybuilder/translations"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: "#888",
-                fontSize: "0.8rem",
-                textDecoration: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.25rem",
-              }}
-            >
-              <span>GitHub: sannybuilder/translations</span>
-              <span style={{ fontSize: "0.7rem" }}>↗</span>
-            </a>
-          </div>
+    <header id="app-header" style={{ background: '#181818', borderBottom: '1px solid #333', padding: '0 0 8px 0', position: 'sticky', top: 0, zIndex: 100 }}>
+      {/* Row 1: Logo, Name, Home, Github */}
+      <div className="content-width">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0 8px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <a href="https://sannybuilder.com" target="_blank" rel="noopener noreferrer" title="Sanny Builder homepage" aria-label="Sanny Builder homepage">
+            <img src={sannyLogo} alt="Logo" style={{ width: 40, height: 40, marginRight: 8 }} />
+          </a>
+          <span style={{ color: '#fff', fontSize: '1.15rem', fontWeight: 700, letterSpacing: 1 }}>Translation Tool</span>
+        </div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+  <a href="https://github.com/sannybuilder/translations" target="_blank" rel="noopener noreferrer" title="View source on GitHub" aria-label="View source on GitHub" style={{ background: '#222', border: 'none', borderRadius: 6, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontWeight: 500, fontSize: '1rem', textDecoration: 'none', boxShadow: '0 1px 4px #0002' }}>
+      <img src={githubLogo} alt="GitHub" style={{ width: 24, height: 24 }} />
+  <span className="icon-btn-text">GitHub</span>
+    </a>
+  <a href="https://sannybuilder.com/discord" target="_blank" rel="noopener noreferrer" title="Join our Discord" aria-label="Join our Discord" style={{ background: '#5865F2', border: 'none', borderRadius: 6, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, color: '#fff', fontWeight: 500, fontSize: '1rem', textDecoration: 'none', boxShadow: '0 1px 4px #0002' }}>
+      <img src={discordLogo} alt="Discord" style={{ width: 24, height: 24 }} />
+  <span className="icon-btn-text">Discord</span>
+    </a>
+  </div>
+      </div>
+  </div>
 
-          {/* Source Mode Toggle */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              // marginLeft: isMobile || isMedium ? "1rem" : "2rem",
-              flexShrink: 0,
-            }}
-          >
-            <label
-              style={{
-                color: "#aaa",
-                fontSize: "0.9rem",
-                display: isMobile ? "none" : "block",
-              }}
-            >
-              Source:
-            </label>
-            <button
-              onClick={() => onSourceModeChange("github")}
-              style={{
-                backgroundColor:
-                  sourceMode === "github" ? "#4CAF50" : "#2a2a2a",
-                color: "#fff",
-                border: "1px solid #444",
-                padding: isMobile ? "0.4rem 0.8rem" : "0.5rem 1rem",
-                borderRadius: "4px 0 0 4px",
-                cursor: "pointer",
-                fontSize: isMobile ? "0.85rem" : "0.9rem",
-                transition: "all 0.3s ease",
-              }}
-            >
-              {isUsingCache ? "GitHub (cached)" : "GitHub"}
-            </button>
-            <button
-              onClick={() => onSourceModeChange("local")}
-              style={{
-                backgroundColor: sourceMode === "local" ? "#4CAF50" : "#2a2a2a",
-                color: "#fff",
-                border: "1px solid #444",
-                padding: isMobile ? "0.4rem 0.8rem" : "0.5rem 1rem",
-                borderRadius: "0 4px 4px 0",
-                cursor: "pointer",
-                fontSize: isMobile ? "0.85rem" : "0.9rem",
-                marginLeft: "-1px",
-                transition: "all 0.3s ease",
-              }}
-            >
-              {isMobile ? "Local" : "Local Files"}
-            </button>
-
-            <button
-              onClick={onSave}
-              disabled={!hasChanges}
-              style={{
-                backgroundColor: hasChanges ? "#4CAF50" : "#333",
-                color: hasChanges ? "#fff" : "#666",
-                border: "none",
-                padding: "0.75rem 1.5rem",
-                borderRadius: "4px",
-                cursor: hasChanges ? "pointer" : "not-allowed",
-                fontSize: "1rem",
-                fontWeight: "bold",
-                transition: "all 0.3s ease",
-                width: isMobile || isMedium ? "100%" : "auto",
-                minWidth: isDesktop ? "150px" : "auto",
-                maxWidth: "200px",
-                alignSelf: isMobile || isMedium ? "stretch" : "center",
-              }}
-            >
-              Save To File
-            </button>
+  <div className="content-width">
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 32, padding: '4px 0' }}>
+        {/* Source Switch */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ color: '#aaa', fontWeight: 500, fontSize: '1rem', marginRight: 8 }}>Source</span>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button title="Use GitHub as source" aria-pressed={sourceMode === 'github'} onClick={() => onSourceModeChange('github')} style={{ background: sourceMode === 'github' ? '#4CAF50' : '#222', color: '#fff', border: '1px solid #444', borderRadius: '4px 0 0 4px', padding: '6px 16px', fontWeight: 500, fontSize: '0.95rem', cursor: 'pointer', marginRight: 0 }}>{isUsingCache ? 'GitHub (cached)' : 'GitHub'}</button>
+            <button title="Use local files as source" aria-pressed={sourceMode === 'local'} onClick={() => onSourceModeChange('local')} style={{ background: sourceMode === 'local' ? '#4CAF50' : '#222', color: '#fff', border: '1px solid #444', borderRadius: '0 4px 4px 0', padding: '6px 16px', fontWeight: 500, fontSize: '0.95rem', cursor: 'pointer', marginLeft: -1 }}>{'Local'}</button>
           </div>
         </div>
-      </div>
-
-      {/* File Selection Controls and Stats */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          // alignItems: isMobile ? "stretch" : "center",
-          // justifyContent: "space-between",
-          gap: isMobile ? "1rem" : "1.5rem",
-          // paddingTop: "0.5rem",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            alignItems: isMobile || isMedium ? "stretch" : "center",
-            gap: isMobile ? "1rem" : isMedium ? "1.5rem" : "2rem",
-            flex: isDesktop ? 1 : "auto",
-            // width: isMobile || isMedium ? "100%" : "auto",
-          }}
-        >
-          {sourceMode === "github" ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                width: isMobile ? "100%" : "auto",
-              }}
-            >
-              <label htmlFor="language-selector" style={{ color: "#aaa" }}>
-                Language:
-              </label>
-              <select
-                id="language-selector"
-                value={selectedTranslation}
-                onChange={(e) => onTranslationChange(e.target.value)}
-                style={{
-                  backgroundColor: "#2a2a2a",
-                  color: "#fff",
-                  border: "1px solid #444",
-                  padding: "0.5rem 1rem",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  minWidth: "150px",
-                  maxWidth: "150px",
-                  flex: isMobile || isMedium ? "1" : "unset",
-                }}
-              >
-                {availableTranslations.map((lang) => {
-                  // Format the language name nicely
-                  const langName = lang.replace(".ini", "");
-                  const formattedName =
-                    langName.charAt(0).toUpperCase() + langName.slice(1);
-                  return (
-                    <option key={lang} value={lang}>
-                      {formattedName}
-                    </option>
-                  );
-                })}
-              </select>
+        {/* Language selector or upload buttons */}
+        {sourceMode === 'github' ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <label htmlFor="language-selector" className="language-label" style={{ color: '#aaa', fontWeight: 500, fontSize: '1rem', marginRight: 8 }}>Language:</label>
+            <select id="language-selector" title="Select language file" aria-label="Select language file" value={selectedTranslation} onChange={e => onTranslationChange(e.target.value)} style={{ background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 6, padding: '8px 16px', fontSize: '1rem', fontWeight: 500, minWidth: 120 }}>
+              {availableTranslations.map(lang => {
+                const langName = lang.replace('.ini', '');
+                const formattedName = langName.charAt(0).toUpperCase() + langName.slice(1);
+                return <option key={lang} value={lang}>{formattedName}</option>;
+              })}
+            </select>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              <label style={{ color: '#aaa', fontWeight: 500, fontSize: '1rem', marginRight: 8 }}>English (Base):</label>
+              <input type="file" accept=".ini" onChange={onEnglishFileUpload} style={{ display: 'none' }} id="english-file-input" />
+              <label htmlFor="english-file-input" style={{ background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 6, padding: '8px 16px', fontSize: '1rem', fontWeight: 500, cursor: 'pointer', minWidth: 120 }}>{localEnglishFileName || 'Choose File'}</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ color: '#aaa', fontWeight: 500, fontSize: '1rem', marginRight: 8 }}>Translation:</label>
+              <input type="file" accept=".ini" onChange={onTranslationFileUpload} style={{ display: 'none' }} id="translation-file-input" />
+              <label htmlFor="translation-file-input" style={{ background: '#222', color: '#fff', border: '1px solid #444', borderRadius: 6, padding: '8px 16px', fontSize: '1rem', fontWeight: 500, cursor: 'pointer', minWidth: 120 }}>{localFileName || 'Choose File'}</label>
             </div>
-          ) : (
-            <>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  width: isMobile || isMedium ? "100%" : "auto",
-                  justifyContent: isMobile ? "space-between" : "flex-start",
-                }}
-              >
-                <label
-                  style={{
-                    color: "#aaa",
-                    minWidth: isMobile ? "auto" : "120px",
-                  }}
-                >
-                  English (Base):
-                </label>
-                <input
-                  type="file"
-                  accept=".ini"
-                  onChange={onEnglishFileUpload}
-                  style={{ display: "none" }}
-                  id="english-file-input"
-                />
-                <label
-                  htmlFor="english-file-input"
-                  style={{
-                    backgroundColor: "#2a2a2a",
-                    color: "#fff",
-                    border: "1px solid #444",
-                    padding: "0.5rem 1rem",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                    flex: isMobile || isMedium ? "1" : "unset",
-                    textAlign: "center",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: isMobile ? "200px" : "none",
-                  }}
-                >
-                  {localEnglishFileName || "Choose File"}
-                </label>
-              </div>
+          </div>
+        )}
+    </div>
+  </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  width: isMobile || isMedium ? "100%" : "auto",
-                  justifyContent: isMobile ? "space-between" : "flex-start",
-                }}
-              >
-                <label
-                  style={{
-                    color: "#aaa",
-                    minWidth: isMobile ? "auto" : "120px",
-                  }}
-                >
-                  Translation:
-                </label>
-                <input
-                  type="file"
-                  accept=".ini"
-                  onChange={onTranslationFileUpload}
-                  style={{ display: "none" }}
-                  id="translation-file-input"
-                />
-                <label
-                  htmlFor="translation-file-input"
-                  style={{
-                    backgroundColor: "#2a2a2a",
-                    color: "#fff",
-                    border: "1px solid #444",
-                    padding: "0.5rem 1rem",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                    flex: isMobile || isMedium ? "1" : "unset",
-                    textAlign: "center",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: isMobile ? "200px" : "none",
-                  }}
-                >
-                  {localFileName || "Choose File"}
-                </label>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "1.5rem",
-            color: "#aaa",
-            fontSize: "0.9rem",
-            flexWrap: "wrap",
-          }}
-        >
-          <div 
+    {/* Row 3: Filters left, Save right */}
+  <div className="content-width">
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 0', marginTop: 2 }}>
+        {/* Filters */}
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className="filter-btn"
             onClick={() => onFilterChange && onFilterChange('all')}
-            title="Click to show all entries"
-            style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "0.5rem",
-              cursor: onFilterChange ? "pointer" : "default",
-              padding: "0.25rem 0.5rem",
-              borderRadius: "4px",
-              backgroundColor: filterMode === 'all' ? "#1a1a1a" : "transparent",
-              border: filterMode === 'all' ? "1px solid #4CAF50" : "1px solid transparent",
-              transition: "all 0.2s ease"
-            }}
-            onMouseEnter={(e) => {
-              if (onFilterChange && filterMode !== 'all') {
-                e.currentTarget.style.backgroundColor = "#1a1a1a";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onFilterChange && filterMode !== 'all') {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }
+            style={{
+              background: filterMode === 'all' ? '#222' : 'transparent',
+              color: '#fff',
+              border: filterMode === 'all' ? '1px solid #fff' : '1px solid #444',
+              borderRadius: 4,
+              padding: '4px 6px',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              flexWrap: 'wrap',
+              overflow: 'hidden'
             }}
           >
-            <span>Total:</span>
-            <span
-              style={{
-                color: filterMode === 'all' ? "#4CAF50" : "#fff",
-                fontWeight: "bold",
-                fontSize: "1rem",
-              }}
-            >
-              {totalKeys}
-            </span>
-          </div>
-
-          {isDesktop && (
-            <div
-              style={{
-                width: "1px",
-                height: "20px",
-                backgroundColor: "#444",
-              }}
-            />
-          )}
-
-          <div 
+            <span style={{ display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', color: '#fff', flex: '0 1 auto', minWidth: 0, textAlign: 'center' }}>All</span>
+            <span style={{ whiteSpace: 'nowrap', flex: '0 0 auto', fontSize: '0.9rem' }}>({totalKeys})</span>
+          </button>
+          <button
+            className="filter-btn"
             onClick={() => onFilterChange && onFilterChange('untranslated')}
-            title="Click to show only untranslated entries"
-            style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "0.5rem",
-              cursor: onFilterChange ? "pointer" : "default",
-              padding: "0.25rem 0.5rem",
-              borderRadius: "4px",
-              backgroundColor: filterMode === 'untranslated' ? "#1a1a1a" : "transparent",
-              border: filterMode === 'untranslated' ? "1px solid #ff9800" : "1px solid transparent",
-              transition: "all 0.2s ease"
-            }}
-            onMouseEnter={(e) => {
-              if (onFilterChange && filterMode !== 'untranslated') {
-                e.currentTarget.style.backgroundColor = "#1a1a1a";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onFilterChange && filterMode !== 'untranslated') {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }
+            title={`Untranslated (${untranslatedKeys})`}
+            style={{
+              background: filterMode === 'untranslated' ? '#222' : 'transparent',
+              color: '#ff9800',
+              border: filterMode === 'untranslated' ? '1px solid #ff9800' : '1px solid #444',
+              borderRadius: 4,
+              padding: '4px 6px',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              flexWrap: 'wrap',
+              overflow: 'hidden'
             }}
           >
-            <span>Untranslated:</span>
-            <span
-              style={{
-                color: filterMode === 'untranslated' ? "#ff9800" : 
-                       untranslatedKeys > 0 ? "#ff9800" : "#4CAF50",
-                fontWeight: "bold",
-                fontSize: "1rem",
-              }}
-            >
-              {untranslatedKeys}
-            </span>
-          </div>
-
-          {isDesktop && (
-            <div
-              style={{
-                width: "1px",
-                height: "20px",
-                backgroundColor: "#444",
-              }}
-            />
-          )}
-
-          <div 
+            <span style={{ display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', color: '#ff9800', flex: '0 1 auto', minWidth: 0, textAlign: 'center' }}>Untranslated</span>
+            <span style={{ whiteSpace: 'nowrap', flex: '0 0 auto', color: '#ff9800', fontSize: '0.9rem' }}>({untranslatedKeys})</span>
+          </button>
+          <button
+            className="filter-btn"
             onClick={() => onFilterChange && onFilterChange('invalid')}
-            title="Click to show only invalid entries"
-            style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "0.5rem",
-              cursor: onFilterChange ? "pointer" : "default",
-              padding: "0.25rem 0.5rem",
-              borderRadius: "4px",
-              backgroundColor: filterMode === 'invalid' ? "#1a1a1a" : "transparent",
-              border: filterMode === 'invalid' ? "1px solid #ff4444" : "1px solid transparent",
-              transition: "all 0.2s ease"
-            }}
-            onMouseEnter={(e) => {
-              if (onFilterChange && filterMode !== 'invalid') {
-                e.currentTarget.style.backgroundColor = "#1a1a1a";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (onFilterChange && filterMode !== 'invalid') {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }
+            title={`Invalid (${invalidKeys})`}
+            style={{
+              background: filterMode === 'invalid' ? '#222' : 'transparent',
+              color: '#ff4444',
+              border: filterMode === 'invalid' ? '1px solid #ff4444' : '1px solid #444',
+              borderRadius: 4,
+              padding: '4px 6px',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              flexWrap: 'wrap',
+              overflow: 'hidden'
             }}
           >
-            <span>Invalid:</span>
-            <span
-              style={{
-                color: filterMode === 'invalid' ? "#ff4444" : 
-                       invalidKeys > 0 ? "#ff4444" : "#4CAF50",
-                fontWeight: "bold",
-                fontSize: "1rem",
-              }}
-            >
-              {invalidKeys}
-            </span>
-          </div>
-
-          {isDesktop && (
-            <div
-              style={{
-                width: "1px",
-                height: "20px",
-                backgroundColor: "#444",
-              }}
-            />
-          )}
-
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span>Progress:</span>
-            <span
-              style={{
-                color: untranslatedKeys === 0 && invalidKeys === 0 ? "#4CAF50" : "#fff",
-                fontWeight: "bold",
-                fontSize: "1rem",
-              }}
-            >
-              {totalKeys > 0
-                ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100)
-                : 0}
-              %
-            </span>
-          </div>
+            <span style={{ display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'normal', color: '#ff4444', flex: '0 1 auto', minWidth: 0, textAlign: 'center' }}>Invalid</span>
+            <span style={{ whiteSpace: 'nowrap', flex: '0 0 auto', color: '#ff4444', fontSize: '0.9rem' }}>({invalidKeys})</span>
+          </button>
+          <span className="progress-label" style={{ color: '#aaa', fontWeight: 500, fontSize: '1rem', marginLeft: 12 }}>Progress: <span style={{ color: untranslatedKeys === 0 && invalidKeys === 0 ? '#4CAF50' : '#fff', fontWeight: 700 }}>{totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%</span></span>
         </div>
+        {/* Save Button */}
+  <button
+    onClick={onSave}
+    disabled={!hasChanges}
+    className="save-btn"
+    title={hasChanges ? 'Save changes' : 'No changes to save'}
+  style={{ background: hasChanges ? '#4CAF50' : '#333', color: hasChanges ? '#fff' : '#666', border: 'none', cursor: hasChanges ? 'pointer' : 'not-allowed', marginLeft: 'auto' }}
+  >
+    Save
+  </button>
       </div>
+  </div>
     </header>
   );
 };
