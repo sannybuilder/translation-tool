@@ -829,34 +829,6 @@ function App() {
           changeTracker={changeTracker}
         />
         
-        {/* Mobile Progress Bar - Below Header */}
-        {isMobile && selectedTranslation && stats.total > 0 && (
-          <div
-            className="mobile-progress-bar"
-            style={{
-              width: '100%',
-              position: 'relative',
-              height: 5,
-              backgroundColor: '#1a1a1a',
-              overflow: 'hidden',
-            }}
-            title={`Progress: ${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                height: '100%',
-                width: `${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`,
-                background: `linear-gradient(90deg, 
-                  hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 70%, 45%) 0%, 
-                  hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 85%, 50%) 100%)`,
-                transition: 'width 0.3s ease, background 0.3s ease',
-              }}
-            />
-          </div>
-        )}
         
         <GitHubErrorView
           error={error}
@@ -892,34 +864,7 @@ function App() {
         changeTracker={changeTracker}
       />
 
-      {/* Mobile Progress Bar - Below Header */}
-      {isMobile && selectedTranslation && stats.total > 0 && (
-        <div
-          className="mobile-progress-bar"
-          style={{
-            width: '100%',
-            position: 'relative',
-            height: 5,
-            backgroundColor: '#1a1a1a',
-            overflow: 'hidden',
-          }}
-          title={`Progress: ${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              height: '100%',
-              width: `${Math.round(((stats.total - stats.untranslated) / stats.total) * 100)}%`,
-              background: `linear-gradient(90deg, 
-                hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 70%, 45%) 0%, 
-                hsl(${((stats.total - stats.untranslated) / stats.total) * 120}, 85%, 50%) 100%)`,
-              transition: 'width 0.3s ease, background 0.3s ease',
-            }}
-          />
-        </div>
-      )}
+
 
       {error && sourceMode === 'github' && (
         <StatusBanner

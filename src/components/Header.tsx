@@ -578,28 +578,35 @@ const Header: React.FC<HeaderProps> = ({
                   {isMobile ? invalidKeys : `(${invalidKeys})`}
                 </span>
               </button>
-              {!isMobile && (
-                // Desktop: Show text progress
+              {/* Progress display for all screen sizes */}
+              <span
+                className="progress-label"
+                style={{
+                  color: '#aaa',
+                  fontWeight: 500,
+                  fontSize: isMobile ? '0.85rem' : '1rem',
+                  marginLeft: isMobile ? 8 : 12,
+                }}
+              >
+                {!isMobile && 'Progress:'}{' '}
                 <span
-                  className="progress-label"
                   style={{
-                    color: '#aaa',
-                    fontWeight: 500,
-                    fontSize: '1rem',
-                    marginLeft: 12,
+                    color: (() => {
+                      const progressPercent = totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0;
+                      if (progressPercent === 100 && invalidKeys === 0) return '#4CAF50'; // Green for complete
+                      if (progressPercent >= 80) return '#8BC34A'; // Light green for 80%+
+                      if (progressPercent >= 60) return '#FFEB3B'; // Yellow for 60%+
+                      if (progressPercent >= 40) return '#FF9800'; // Orange for 40%+
+                      if (progressPercent >= 20) return '#FF5722'; // Deep orange for 20%+
+                      return '#F44336'; // Red for < 20%
+                    })(),
+                    fontWeight: 700,
+                    fontSize: isMobile ? '0.85rem' : 'inherit',
                   }}
                 >
-                  Progress:{' '}
-                  <span
-                    style={{
-                      color: untranslatedKeys === 0 && invalidKeys === 0 ? '#4CAF50' : '#fff',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%
-                  </span>
+                  {totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%
                 </span>
-              )}
+              </span>
             </div>
             
             {/* Review Changes Button */}
@@ -631,7 +638,7 @@ const Header: React.FC<HeaderProps> = ({
                     transition: 'all 0.3s ease',
                   }}
                 >
-                  {isMobile ? '✓' : 'Review Changes'}
+                  {isMobile ? 'Review' : 'Review Changes'}
                   <span
                     style={{
                       backgroundColor: '#fff',

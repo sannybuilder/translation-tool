@@ -28,10 +28,7 @@
   }
 }
 
-/* Mobile progress bar styles */
-.mobile-progress-bar {
-  /* Minimal 5px line */
-}
+
 * {
   margin: 0;
   padding: 0;
@@ -127,10 +124,7 @@ textarea:focus {
   .language-label {
     display: none;
   }
-  /* Hide Progress label on mobile for compactness */
-  .progress-label {
-    display: none;
-  }
+
   /* Compact filter buttons on mobile */
   .filter-btn {
     max-width: 64px;
