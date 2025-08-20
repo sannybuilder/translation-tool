@@ -2,7 +2,7 @@ import React from 'react';
 import sannyLogo from '../assets/sanny.png';
 import githubLogo from '../assets/github.svg';
 import discordLogo from '../assets/discord.svg';
-import { ChangeTracker } from '../utils/changeTracker';
+ 
 
 type SourceMode = 'github' | 'local';
 type FilterMode = 'all' | 'untranslated' | 'invalid';
@@ -28,7 +28,6 @@ interface HeaderProps {
   screenSize?: 'mobile' | 'medium' | 'desktop';
   pendingChanges?: number;
   onReviewChangesClick?: () => void;
-  changeTracker?: ChangeTracker | null; // For checking pending changes language
 }
 
 import { useEffect, useRef } from 'react';
@@ -54,52 +53,20 @@ const Header: React.FC<HeaderProps> = ({
   screenSize = 'desktop',
   pendingChanges = 0,
   onReviewChangesClick,
-  changeTracker,
 }) => {
   // Track whether we've already randomized once
   const didRandomizeRef = useRef(false);
 
   useEffect(() => {
-    // Skip randomization if an initial lang was provided via query param
     if (suppressRandomize) return;
-    // Only randomize once on the very first availability of translations.
-    // Randomize only when there's no selection yet (selectedTranslation is empty).
     if (!didRandomizeRef.current && availableTranslations.length > 0 && selectedTranslation === '') {
-      // Check if there are pending changes with a language preference
-      let langToSelect = null;
-      
-      // First, check for pending changes language (this takes priority)
-      const pendingChangesLanguage = ChangeTracker.getPendingChangesLanguage();
-      if (pendingChangesLanguage && availableTranslations.includes(pendingChangesLanguage)) {
-        langToSelect = pendingChangesLanguage;
-      }
-      
-      // If no pending changes language, check for saved session
-      if (!langToSelect && changeTracker) {
-        try {
-          const savedSession = localStorage.getItem('translation_session');
-          if (savedSession) {
-            const sessionData = JSON.parse(savedSession);
-            if (sessionData.selectedTranslation && availableTranslations.includes(sessionData.selectedTranslation)) {
-              langToSelect = sessionData.selectedTranslation;
-            }
-          }
-                    } catch {
-          // Fall back to random selection if we can't get the language
-        }
-      }
-      
-      // If no language from pending changes or session, pick random
-      if (!langToSelect || !availableTranslations.includes(langToSelect)) {
-        langToSelect = availableTranslations[Math.floor(Math.random() * availableTranslations.length)];
-      }
-      
+      const langToSelect = availableTranslations[Math.floor(Math.random() * availableTranslations.length)];
       if (langToSelect !== selectedTranslation) {
         onTranslationChange(langToSelect);
       }
       didRandomizeRef.current = true;
     }
-  }, [availableTranslations, suppressRandomize, changeTracker, selectedTranslation, onTranslationChange]);
+  }, [availableTranslations, suppressRandomize, selectedTranslation, onTranslationChange]);
 
   const isMobile = screenSize === 'mobile';
 

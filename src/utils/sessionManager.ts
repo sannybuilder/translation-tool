@@ -1,40 +1,64 @@
-import type { SessionData } from '../types/session';
+import type { EditingCache } from '../types/workCache';
 
-const SESSION_KEY = 'translation_tool_session';
-const AUTOSAVE_INTERVAL = 5000; // 5 seconds
+// Use a new key and ignore any legacy keys
+const CACHE_KEY = 'translation_tool_editing_cache_v2';
 
-export const saveSession = (data: SessionData): void => {
+export const saveEditingCache = (data: EditingCache): void => {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ...data, lastEditedAt: Date.now() }));
   } catch (error) {
-    console.error('Failed to save session:', error);
+    console.error('Failed to save editing cache:', error);
   }
 };
 
-export const loadSession = (): SessionData | null => {
+export const loadEditingCache = (): EditingCache | null => {
   try {
-    const saved = localStorage.getItem(SESSION_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem(CACHE_KEY);
+    return saved ? (JSON.parse(saved) as EditingCache) : null;
   } catch (error) {
-    console.error('Failed to load session:', error);
+    console.error('Failed to load editing cache:', error);
     return null;
   }
 };
 
-export const clearSession = (): void => {
+export const clearEditingCache = (): void => {
   try {
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(CACHE_KEY);
   } catch (error) {
-    console.error('Failed to clear session:', error);
+    console.error('Failed to clear editing cache:', error);
   }
 };
 
-export const hasSession = (): boolean => {
-  return localStorage.getItem(SESSION_KEY) !== null;
+export const hasEditingCache = (): boolean => {
+  return localStorage.getItem(CACHE_KEY) !== null;
 };
 
-export const getAutosaveInterval = (): number => {
-  return AUTOSAVE_INTERVAL;
-};
+export function buildEditingCacheSnapshot(args: {
+  selectedTranslation: string;
+  localFileName?: string;
+  localEnglishFileName?: string;
+  englishData: EditingCache['englishData'];
+  originalTranslationData: EditingCache['originalTranslationData'];
+  translationData: EditingCache['translationData'];
+  changes: EditingCache['changes'];
+}): EditingCache {
+  const ensuredLocalFileName = args.localFileName && args.localFileName.length > 0
+    ? args.localFileName
+    : (args.selectedTranslation || 'translation.ini');
+  const ensuredLocalEnglish = args.localEnglishFileName && args.localEnglishFileName.length > 0
+    ? args.localEnglishFileName
+    : 'english.ini';
 
+  return {
+    source: 'local',
+    selectedTranslation: args.selectedTranslation,
+    localFileName: ensuredLocalFileName,
+    localEnglishFileName: ensuredLocalEnglish,
+    englishData: args.englishData,
+    originalTranslationData: args.originalTranslationData,
+    translationData: args.translationData,
+    changes: args.changes,
+    lastEditedAt: Date.now(),
+  };
+}
 

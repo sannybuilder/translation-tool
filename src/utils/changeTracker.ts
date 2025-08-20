@@ -1,9 +1,6 @@
 import type { TrackedChange } from '../types/changeTracking';
 import type { IniData } from './iniParser';
 
-const CHANGE_TRACKER_KEY = 'translation_changes_tracker';
-const CHANGE_TRACKER_META_KEY = 'translation_changes_meta';
-
 export class ChangeTracker {
   private changes: Map<string, TrackedChange> = new Map();
   public originalData: IniData = {}; // Made public for comparison
@@ -12,7 +9,6 @@ export class ChangeTracker {
   constructor(originalData: IniData, selectedTranslation?: string) {
     this.originalData = JSON.parse(JSON.stringify(originalData));
     this.selectedTranslation = selectedTranslation || '';
-    this.loadChanges();
   }
 
   // Track a change to a translation entry
@@ -23,7 +19,6 @@ export class ChangeTracker {
     // If value is reverted to original, remove from tracked changes
     if (newValue === originalValue) {
       this.changes.delete(id);
-      this.saveChanges();
       return;
     }
 
@@ -41,7 +36,7 @@ export class ChangeTracker {
       prNumber: existingChange?.prNumber,
     });
 
-    this.saveChanges();
+    // in-memory only
   }
 
   // Get all unsubmitted changes
@@ -71,7 +66,7 @@ export class ChangeTracker {
         }
       }
     });
-    this.saveChanges();
+    // in-memory only
   }
 
   // Clear submitted changes
@@ -84,7 +79,7 @@ export class ChangeTracker {
       this.changes.set(change.id, change);
     });
     
-    this.saveChanges();
+    // in-memory only
   }
 
   // Undo a specific change - returns the original value
@@ -92,7 +87,6 @@ export class ChangeTracker {
     const change = this.changes.get(changeId);
     if (change) {
       this.changes.delete(changeId);
-      this.saveChanges();
       return change.originalValue;
     }
     return null;
@@ -109,9 +103,7 @@ export class ChangeTracker {
       this.changes.delete(change.id);
     });
     
-    if (restoredValues.size > 0) {
-      this.saveChanges();
-    }
+    // in-memory only
     
     return restoredValues;
   }
@@ -130,9 +122,7 @@ export class ChangeTracker {
       this.changes.delete(change.id);
     });
     
-    if (restoredValues.size > 0) {
-      this.saveChanges();
-    }
+    // in-memory only
     
     return restoredValues;
   }
@@ -227,44 +217,16 @@ export class ChangeTracker {
   reset(newOriginalData: IniData): void {
     this.originalData = JSON.parse(JSON.stringify(newOriginalData));
     this.changes.clear();
-    // Clear localStorage when resetting
-    try {
-      localStorage.removeItem(CHANGE_TRACKER_KEY);
-      localStorage.removeItem(CHANGE_TRACKER_META_KEY);
-    } catch (error) {
-      console.error('Failed to clear tracked changes:', error);
-    }
   }
 
-  private loadChanges(): void {
-    try {
-      const saved = localStorage.getItem(CHANGE_TRACKER_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        this.changes = new Map(Object.entries(parsed));
-      }
-    } catch (error) {
-      console.error('Failed to load tracked changes:', error);
-    }
+  // Replace the current tracked changes with a new array
+  setChangesFromArray(changes: TrackedChange[]): void {
+    this.changes = new Map(changes.map(c => [c.id, c]));
   }
 
-  private saveChanges(): void {
-    try {
-      const toSave = Object.fromEntries(this.changes.entries());
-      localStorage.setItem(CHANGE_TRACKER_KEY, JSON.stringify(toSave));
-      // Also save metadata including the selected translation
-      if (this.changes.size > 0) {
-        localStorage.setItem(CHANGE_TRACKER_META_KEY, JSON.stringify({
-          selectedTranslation: this.selectedTranslation,
-          lastUpdated: Date.now()
-        }));
-      } else {
-        // Clear metadata if no changes remain
-        localStorage.removeItem(CHANGE_TRACKER_META_KEY);
-      }
-    } catch (error) {
-      console.error('Failed to save tracked changes:', error);
-    }
+  // Clear all tracked changes without altering original data
+  clearAll(): void {
+    this.changes.clear();
   }
 
   // Get the selected translation associated with these changes
@@ -275,26 +237,6 @@ export class ChangeTracker {
   // Set the selected translation
   setSelectedTranslation(translation: string): void {
     this.selectedTranslation = translation;
-    this.saveChanges(); // Save metadata when translation changes
-  }
-
-  // Static method to check if there are pending changes and get the language
-  static getPendingChangesLanguage(): string | null {
-    try {
-      const meta = localStorage.getItem(CHANGE_TRACKER_META_KEY);
-      const changes = localStorage.getItem(CHANGE_TRACKER_KEY);
-      if (meta && changes) {
-        const parsedChanges = JSON.parse(changes);
-        // Only return language if there are actual pending changes
-        if (Object.keys(parsedChanges).length > 0) {
-          const parsed = JSON.parse(meta);
-          return parsed.selectedTranslation || null;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load change tracker metadata:', error);
-    }
-    return null;
   }
 }
 

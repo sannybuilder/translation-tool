@@ -1,24 +1,23 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import LocalFileEditor from './components/LocalFileEditor';
 import StatusBanner from './components/StatusBanner';
 import GitHubErrorView from './components/GitHubErrorView';
 import TranslationSections from './components/TranslationSections';
 import ModeChangeDialog from './components/ModeChangeDialog';
-import PartialUpdatePanel from './components/PartialUpdatePanel';
+import ChangeReview from './components/ChangeReview.tsx';
 import { parseIni, serializeIni, countFormatSpecifiers } from './utils/iniParser';
 import type { IniData } from './utils/iniParser';
 import type { TranslationEntry } from './types/translation';
-import type { SessionData, SessionState } from './types/session';
+// session types removed in favor of unified editing cache
 import {
   getCachedData,
   setCachedData,
   fetchGitHubFileList,
   fetchTranslationFile,
-  fetchGitHubFileNamesOnly,
   readLocalFile,
 } from './utils/githubCache';
-import { saveSession, loadSession, clearSession, getAutosaveInterval } from './utils/sessionManager';
+import { saveEditingCache, loadEditingCache, clearEditingCache, hasEditingCache, buildEditingCacheSnapshot } from './utils/sessionManager';
 import { ChangeTracker } from './utils/changeTracker';
 import './App.css';
 
@@ -49,18 +48,10 @@ function App() {
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
   // Session management state
-  const [sessionState, setSessionState] = useState<SessionState>({
-    hasSession: false,
-    lastSaveTime: null,
-    isAutoSaving: false,
-  });
-  const [initialSessionData, setInitialSessionData] = useState<SessionData | null>(null);
+  // unified editing cache replaces old session
   // Track currently editing entry to prevent it from disappearing when filters are active
   const [editingEntry, setEditingEntry] = useState<{ section: string; key: string } | null>(null);
-  // Deprecated: kept to avoid large refactors; no longer used after switching to debounced save
-  // const autoSaveIntervalRef = useRef<number | null>(null);
-  const debouncedSaveTimeoutRef = useRef<number | null>(null);
-  const userEditedRef = useRef<boolean>(false);
+  const hasCheckedCacheRef = useRef<boolean>(false);
   
   // Change tracking for partial updates
   const [changeTracker, setChangeTracker] = useState<ChangeTracker | null>(null);
@@ -116,36 +107,41 @@ function App() {
     });
   };
 
-  // Check for existing session on app load
+  // Restore from unified editing cache on app load
   useEffect(() => {
-    const existingSession = loadSession();
-    if (existingSession) {
-      // Check if there are pending changes that haven't been submitted
-      const hasPendingChanges = ChangeTracker.getPendingChangesLanguage() !== null;
-      
-      if (hasPendingChanges) {
-        // Automatically restore session if there are pending changes
-        setInitialSessionData(existingSession);
-        setSessionState((prev) => ({
-          ...prev,
-          hasSession: true,
-          lastSaveTime: existingSession.timestamp,
-        }));
-        // We'll trigger the resume after this effect completes
-      } else {
-        // No pending changes, start fresh
-        clearSession();
-        setSessionState({
-          hasSession: false,
-          lastSaveTime: null,
-          isAutoSaving: false,
-        });
-      }
+    if (hasCheckedCacheRef.current) return;
+    const cache = loadEditingCache();
+    if (cache) {
+      // force local mode when resuming saved cache
+      setSourceMode('local');
+      setSelectedTranslation(cache.selectedTranslation);
+      // Ensure filenames are set for header and to hide LocalFileEditor
+      if (cache.localFileName) setLocalFileName(cache.localFileName);
+      if (cache.localEnglishFileName) setLocalEnglishFileName(cache.localEnglishFileName);
+      setLocalFileName(cache.localFileName);
+      setLocalEnglishFileName(cache.localEnglishFileName);
+      setEnglishData(cache.englishData);
+      setTranslationData(cache.translationData);
+      setOriginalTranslationData(cache.originalTranslationData);
+      setAvailableTranslations(prev => prev.length ? prev : []);
+      setHasChanges(JSON.stringify(cache.translationData) !== JSON.stringify(cache.originalTranslationData));
     }
-    // Gate: mark that we've completed the session check (whether we found a session or not)
     setHasCheckedSession(true);
+    hasCheckedCacheRef.current = true;
   }, []);
 
+  // After change tracker is created, if we restored from cache, load its pending changes
+  const appliedCacheToTrackerRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!appliedCacheToTrackerRef.current && changeTrackerRef.current) {
+      const cache = loadEditingCache();
+      if (cache && cache.changes && cache.selectedTranslation === selectedTranslation) {
+        changeTrackerRef.current.setChangesFromArray(cache.changes);
+        setChangeTrackerUpdateTrigger(prev => prev + 1);
+        appliedCacheToTrackerRef.current = true;
+      }
+    }
+  }, [changeTrackerRef.current, selectedTranslation]);
 
 
   // Handle local English file upload
@@ -206,6 +202,17 @@ function App() {
       setLocalFileName(translationFileName);
     }
 
+    setHasChanges(false);
+    setError(null);
+  };
+
+  // Handle GitHub base file loading
+  const handleGitHubBaseFileLoad = (
+    englishData: IniData,
+    englishFileName: string,
+  ) => {
+    setEnglishData(englishData);
+    setLocalEnglishFileName(englishFileName);
     setHasChanges(false);
     setError(null);
   };
@@ -483,12 +490,10 @@ function App() {
 
     newTranslationData[section][key] = value;
     setTranslationData(newTranslationData);
-    userEditedRef.current = true;
 
     // Track the change for partial updates
     if (changeTrackerRef.current) {
       changeTrackerRef.current.trackChange(section, key, value);
-      // Force re-render to update the panel
       setChangeTrackerUpdateTrigger(prev => prev + 1);
     }
 
@@ -500,154 +505,39 @@ function App() {
     // Or do a full comparison to catch any changes
     const fullComparison = JSON.stringify(newTranslationData) !== JSON.stringify(originalTranslationData);
 
-    setHasChanges(hasChanged || fullComparison);
+    const changed = hasChanged || fullComparison;
+    setHasChanges(changed);
+
+    // Ensure we are in local mode and filenames are set when user edits
+    if (sourceMode !== 'local') {
+      setSourceMode('local');
+    }
+    if (!localFileName) {
+      setLocalFileName(selectedTranslation || 'translation.ini');
+    }
+    if (!localEnglishFileName) {
+      setLocalEnglishFileName('english.ini');
+    }
+
+    // Persist unified cache immediately with the just-updated data
+    if (selectedTranslation) {
+      const snapshot = buildEditingCacheSnapshot({
+        selectedTranslation,
+        localFileName,
+        localEnglishFileName,
+        englishData,
+        originalTranslationData,
+        translationData: newTranslationData,
+        changes: changeTrackerRef.current ? changeTrackerRef.current.getUnsubmittedChanges() : [],
+      });
+      saveEditingCache(snapshot);
+    }
   };
 
-  // Session management functions
-  const createSessionData = useCallback(
-    (): SessionData => ({
-      timestamp: Date.now(),
-      sourceMode,
-      selectedTranslation,
-      localFileName,
-      localEnglishFileName,
-      englishData,
-      translationData,
-      originalTranslationData,
-      availableTranslations,
-    }),
-    [
-      sourceMode,
-      selectedTranslation,
-      localFileName,
-      localEnglishFileName,
-      englishData,
-      translationData,
-      originalTranslationData,
-      availableTranslations,
-    ],
-  );
-
-  const saveSessionImmediately = useCallback(() => {
-    if (debouncedSaveTimeoutRef.current) {
-      clearTimeout(debouncedSaveTimeoutRef.current);
-      debouncedSaveTimeoutRef.current = null;
-    }
-    const currentSession = createSessionData();
-    saveSession(currentSession);
-    setSessionState((prev) => ({
-      ...prev,
-      hasSession: true,
-      isAutoSaving: false,
-      lastSaveTime: Date.now(),
-    }));
-  }, [createSessionData]);
-
-  // Interval autosave disabled; we use debounced saving instead
-  const startAutoSave = useCallback(() => {}, []);
-
-  const stopAutoSave = useCallback(() => {
-    if (debouncedSaveTimeoutRef.current) {
-      clearTimeout(debouncedSaveTimeoutRef.current);
-      debouncedSaveTimeoutRef.current = null;
-    }
-  }, []);
-
-  const handleResumeSession = useCallback(() => {
-    if (!initialSessionData) return;
-
-    const session = initialSessionData;
-    // Force local mode on resume to avoid any GitHub content loads
-    setSourceMode('local');
-    setSelectedTranslation(session.selectedTranslation);
-    // Derive sensible local filenames if they were not present in the session
-    const derivedLocalEnglishName = session.localEnglishFileName || 'english.ini';
-    const derivedLocalTranslationName = session.localFileName || session.selectedTranslation || 'translation.ini';
-    setLocalFileName(derivedLocalTranslationName);
-    setLocalEnglishFileName(derivedLocalEnglishName);
-    setEnglishData(session.englishData);
-    setTranslationData(session.translationData);
-    setOriginalTranslationData(session.originalTranslationData);
-    setAvailableTranslations(session.availableTranslations);
-    // Mirror the behavior of opening local files manually
-    setHasChanges(false);
-    setError(null);
-
-    setSessionState((prev) => ({
-      ...prev,
-      lastSaveTime: session.timestamp,
-    }));
-
-    // Start autosave after resuming
-    startAutoSave();
-    
-    // Force update of change tracker to ensure UI reflects pending changes
-    setChangeTrackerUpdateTrigger(prev => prev + 1);
-
-    // Refresh only the list of available translations from GitHub (/contents),
-    // but do not load any file contents (avoid english.ini/translation files)
-    (async () => {
-      try {
-        const iniFiles = await fetchGitHubFileNamesOnly();
-        setCachedData('github_file_list', iniFiles);
-        setAvailableTranslations(iniFiles);
-      } catch (e) {
-        // Non-critical: keep session's saved list if GitHub listing fails
-        console.warn('Failed to refresh GitHub file list after resume:', e);
-      }
-    })();
-  }, [initialSessionData, startAutoSave]);
-
-
-
-  // Automatically resume session if there are pending changes
-  useEffect(() => {
-    if (initialSessionData && sessionState.hasSession) {
-      // This means we have a session with pending changes that should be auto-restored
-      handleResumeSession();
-    }
-  }, [initialSessionData, sessionState.hasSession, handleResumeSession]);
-
-  // Debounced save: persist to localStorage only after user stops typing
-  useEffect(() => {
-    // Only schedule a save if this change was initiated by the user.
-    // This ensures we also save when the user reverts back to the original content
-    // (i.e., hasChanges becomes false), but avoid saving on programmatic loads.
-    if (!userEditedRef.current) return;
-
-    if (debouncedSaveTimeoutRef.current) {
-      clearTimeout(debouncedSaveTimeoutRef.current);
-      debouncedSaveTimeoutRef.current = null;
-    }
-
-    setSessionState((prev) => ({ ...prev, isAutoSaving: true }));
-    debouncedSaveTimeoutRef.current = window.setTimeout(() => {
-      const currentSession = createSessionData();
-      saveSession(currentSession);
-      setSessionState((prev) => ({
-        ...prev,
-        hasSession: true,
-        isAutoSaving: false,
-        lastSaveTime: Date.now(),
-      }));
-      userEditedRef.current = false;
-      debouncedSaveTimeoutRef.current = null;
-    }, getAutosaveInterval());
-
-    return () => {
-      if (debouncedSaveTimeoutRef.current) {
-        clearTimeout(debouncedSaveTimeoutRef.current);
-      }
-    };
-  }, [translationData, createSessionData]);
-
-  // Cleanup debounced save on unmount
-  useEffect(() => {
-    return () => stopAutoSave();
-  }, [stopAutoSave]);
+  // Old session/autosave logic removed
 
   const handleSave = () => {
-    const content = serializeIni(translationData);
+    const content = serializeIni(translationData, englishData);
 
     // Save as UTF-8 to support all Unicode characters (Armenian, Russian, etc.)
     // UTF-8 is backward compatible with ASCII, so English and German files will work fine too
@@ -668,37 +558,41 @@ function App() {
     setOriginalTranslationData(JSON.parse(JSON.stringify(translationData)));
     setHasChanges(false);
 
-    // Clear change tracker after successful save (since we saved everything)
+    // Clear only the change list; keep modified files in cache and UI
     if (changeTrackerRef.current) {
-      changeTrackerRef.current.reset({});
-      changeTrackerRef.current = null;
-      setChangeTracker(null);
-      setChangeTrackerUpdateTrigger(0);
+      changeTrackerRef.current.clearAll();
+      setChangeTrackerUpdateTrigger(prev => prev + 1);
     }
-
-    // Clear session after successful save
-    clearSession();
-    stopAutoSave();
-    setSessionState({
-      hasSession: false,
-      lastSaveTime: null,
-      isAutoSaving: false,
-    });
+    // Update cache snapshot to reflect cleared change list
+    if (selectedTranslation) {
+      saveEditingCache({
+        source: 'local',
+        selectedTranslation,
+        localFileName: localFileName || selectedTranslation || 'translation.ini',
+        localEnglishFileName: localEnglishFileName || 'english.ini',
+        englishData,
+        originalTranslationData: JSON.parse(JSON.stringify(translationData)),
+        translationData,
+        changes: [],
+        lastEditedAt: Date.now(),
+      });
+    }
   };
 
   // Handle source mode change
   const handleSourceModeChange = (mode: SourceMode) => {
-    // Check for unsaved changes or pending changes for review
+    if (mode === sourceMode) return;
+
+    const cacheExists = hasEditingCache();
     const hasPendingChanges = (changeTrackerRef.current?.getStats().pending || 0) > 0;
-    
-    if ((hasChanges || hasPendingChanges) && mode !== sourceMode) {
-      // Show confirmation dialog
+    const mustConfirm = cacheExists || hasChanges || hasPendingChanges;
+
+    if (mustConfirm) {
       setPendingMode(mode);
       setShowModeChangeConfirm(true);
       return;
     }
 
-    // No unsaved changes, proceed with mode change
     performSourceModeChange(mode);
   };
 
@@ -715,14 +609,8 @@ function App() {
       setChangeTrackerUpdateTrigger(0);
     }
     
-    // Clear the session when switching modes
-    clearSession();
-    setSessionState({
-      hasSession: false,
-      lastSaveTime: null,
-      isAutoSaving: false,
-    });
-    stopAutoSave();
+    // Delete unified cache only after confirm; here we assume this is called post-confirm
+    clearEditingCache();
     
     if (mode === 'local') {
       // Clear all data and GitHub-specific state when switching to local
@@ -826,11 +714,10 @@ function App() {
           localEnglishFileName={localEnglishFileName}
           onEnglishFileUpload={handleEnglishFileUpload}
           onTranslationFileUpload={handleTranslationFileUpload}
-
+          
           screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
           pendingChanges={changeTracker?.getStats().pending || 0}
           onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
-          changeTracker={changeTracker}
         />
         
         
@@ -865,7 +752,6 @@ function App() {
         screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
         pendingChanges={changeTracker?.getStats().pending || 0}
         onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
-        changeTracker={changeTracker}
       />
 
 
@@ -893,6 +779,7 @@ function App() {
             localFileName={localFileName}
             onEnglishFileUpload={handleEnglishFileUpload}
             onTranslationFileUpload={handleTranslationFileUpload}
+            onGitHubBaseFileLoad={handleGitHubBaseFileLoad}
           />
         )}
         <TranslationSections
@@ -903,7 +790,7 @@ function App() {
           onFocusEntry={(section, key) => setEditingEntry({ section, key })}
           onBlurEntry={() => {
             setEditingEntry(null);
-            saveSessionImmediately();
+            // No-op: saving occurs immediately in onChange handler
           }}
           globalFilterMode={filterMode}
           editingEntry={editingEntry}
@@ -922,16 +809,36 @@ function App() {
 
       {/* Partial Update Panel - show when there's a change tracker with changes */}
       {changeTracker && (
-        <PartialUpdatePanel
+        <ChangeReview
           changeTracker={changeTracker}
           selectedTranslation={selectedTranslation}
           refreshTrigger={changeTrackerUpdateTrigger}
           isOpen={isPartialUpdatePanelOpen}
           onClose={() => setIsPartialUpdatePanelOpen(false)}
           onDownloadFullFile={handleSave}
-          onUndo={(section, key, originalValue) => {
+          onUndo={(section: string, key: string, originalValue: string) => {
             // Update the translation data with the original value
             handleTranslationChange(section, key, originalValue);
+            // Persist the updated cache after an undo action
+            if (selectedTranslation) {
+              saveEditingCache({
+                source: 'local',
+                selectedTranslation,
+                localFileName: localFileName || selectedTranslation || 'translation.ini',
+                localEnglishFileName: localEnglishFileName || 'english.ini',
+                englishData,
+                originalTranslationData,
+                translationData: {
+                  ...translationData,
+                  [section]: {
+                    ...(translationData[section] || {}),
+                    [key]: originalValue,
+                  },
+                },
+                changes: changeTrackerRef.current ? changeTrackerRef.current.getUnsubmittedChanges() : [],
+                lastEditedAt: Date.now(),
+              });
+            }
           }}
           isMobile={isMobile}
         />

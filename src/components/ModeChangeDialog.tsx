@@ -75,7 +75,7 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
             fontSize: "1.2rem",
           }}
         >
-          ⚠️ Warning: Changes Will Be Lost
+          ⚠️ Warning: Cache Will Be Deleted
         </h3>
 
         <p
@@ -86,7 +86,7 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
           }}
         >
           Switching from <strong>{currentLabel}</strong> mode to {" "}
-          <strong>{targetLabel}</strong> mode will discard:
+          <strong>{targetLabel}</strong> mode will delete your local editing cache (files are not uploaded anywhere).
         </p>
         
         <ul
@@ -98,12 +98,12 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
           }}
         >
           {hasChanges && (
-            <li><strong>Unsaved edits</strong> in the current session</li>
+            <li><strong>Unsaved edits</strong> in the current cache</li>
           )}
           {pendingChangesCount > 0 && (
             <li><strong>{pendingChangesCount} pending changes</strong> waiting for review</li>
           )}
-          <li>Your current <strong>session data</strong></li>
+          <li>Your current <strong>local editing cache</strong></li>
         </ul>
 
         <p
@@ -113,7 +113,7 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
             color: "#ccc",
           }}
         >
-          Please save your work or submit pending changes first, or confirm to discard everything.
+          Please download or copy your work or submit pending changes first, or confirm to delete the cache.
         </p>
 
         <p
@@ -179,7 +179,7 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
               e.currentTarget.style.backgroundColor = "#f44336";
             }}
           >
-            Discard Changes
+            Delete Cache
           </button>
         </div>
       </div>

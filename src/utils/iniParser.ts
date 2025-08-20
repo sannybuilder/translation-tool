@@ -21,7 +21,7 @@ export function parseIni(content: string): IniData {
 
     // Check for section header
     if (trimmedLine.startsWith('[') && trimmedLine.endsWith(']')) {
-      currentSection = trimmedLine.slice(1, -1);
+      currentSection = trimmedLine.slice(1, -1).trim();
       if (!result[currentSection]) {
         result[currentSection] = {};
       }
@@ -49,36 +49,81 @@ export function parseIni(content: string): IniData {
   return result;
 }
 
-export function serializeIni(data: IniData): string {
-  const lines: string[] = [];
-  
-  // Handle root-level entries (like LANGID) first
-  const sections = Object.keys(data).sort((a, b) => {
-    // Ensure empty section (root level) comes first
-    if (a === '') return -1;
-    if (b === '') return 1;
-    return a.localeCompare(b);
-  });
-  
-  for (const section of sections) {
-    if (section === '') {
-      // Handle root-level entries (typically LANGID)
-      const keys = Object.keys(data[section]);
-      for (const key of keys) {
-        lines.push(`${key}=${data[section][key]}`);
+export function serializeIni(data: IniData, baseOrder?: IniData): string {
+  // If no base order is provided, fall back to alphabetical output for stability
+  if (!baseOrder) {
+    const lines: string[] = [];
+    const sections = Object.keys(data).sort((a, b) => {
+      if (a === '') return -1;
+      if (b === '') return 1;
+      return a.localeCompare(b);
+    });
+    for (const section of sections) {
+      if (section === '') {
+        const keys = Object.keys(data[section]);
+        for (const key of keys) {
+          lines.push(`${key}=${data[section][key]}`);
+        }
+        if (keys.length > 0) lines.push('');
+      } else {
+        lines.push(`[${section}]`);
+        const keys = Object.keys(data[section]).sort();
+        for (const key of keys) {
+          lines.push(`${key}=${data[section][key]}`);
+        }
+        lines.push('');
       }
-      if (keys.length > 0) {
-        lines.push(''); // Add blank line after root entries
-      }
-    } else {
-      // Handle regular sections
-      lines.push(`[${section}]`);
-      const keys = Object.keys(data[section]).sort();
-      for (const key of keys) {
-        lines.push(`${key}=${data[section][key]}`);
-      }
-      lines.push('');
     }
+    return lines.join('\n');
+  }
+
+  // Preserve the exact section and key order from the base (English) file.
+  const lines: string[] = [];
+
+  const baseSections = Object.keys(baseOrder);
+
+  // 1) Root-level entries in base order, then any extra root keys
+  const hasBaseRoot = baseSections.includes('');
+  const baseRootKeys = hasBaseRoot ? Object.keys(baseOrder['']) : [];
+  if (hasBaseRoot) {
+    for (const key of baseRootKeys) {
+      const value = (data[''] && key in data['']) ? data[''][key] : '';
+      lines.push(`${key}=${value}`);
+    }
+  }
+  if (baseRootKeys.length > 0) lines.push('');
+
+  // Extra root keys (in data but not in base), placed after base root keys
+  const baseRootKeySet = new Set(baseRootKeys);
+  const extraRootKeys = data[''] ? Object.keys(data['']).filter(k => !baseRootKeySet.has(k)) : [];
+  for (const key of extraRootKeys) {
+    lines.push(`${key}=${data[''][key]}`);
+  }
+  if (extraRootKeys.length > 0) lines.push('');
+
+  // 2) Sectioned entries in base order
+  for (const section of baseSections) {
+    if (section === '') continue;
+    lines.push(`[${section}]`);
+    const baseKeys = Object.keys(baseOrder[section] || {});
+    for (const key of baseKeys) {
+      const value = (data[section] && key in data[section]) ? data[section][key] : '';
+      lines.push(`${key}=${value}`);
+    }
+    lines.push('');
+  }
+
+  // 3) Append any extra sections that exist in data but not in baseOrder
+  const baseSectionSet = new Set(baseSections);
+  const extraSections = Object.keys(data).filter(s => !baseSectionSet.has(s));
+  for (const section of extraSections) {
+    if (section === '') continue;
+    lines.push(`[${section}]`);
+    const keys = Object.keys(data[section] || {});
+    for (const key of keys) {
+      lines.push(`${key}=${data[section][key]}`);
+    }
+    lines.push('');
   }
 
   return lines.join('\n');
