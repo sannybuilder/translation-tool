@@ -28,6 +28,7 @@ interface HeaderProps {
   screenSize?: 'mobile' | 'medium' | 'desktop';
   pendingChanges?: number;
   onReviewChangesClick?: () => void;
+  hasActiveCache?: boolean;
 }
 
 import { useEffect, useRef } from 'react';
@@ -53,6 +54,7 @@ const Header: React.FC<HeaderProps> = ({
   screenSize = 'desktop',
   pendingChanges = 0,
   onReviewChangesClick,
+  hasActiveCache = false,
 }) => {
   // Track whether we've already randomized once
   const didRandomizeRef = useRef(false);
@@ -577,7 +579,7 @@ const Header: React.FC<HeaderProps> = ({
             </div>
             
             {/* Review Changes Button */}
-            {pendingChanges > 0 && onReviewChangesClick && (
+            {hasActiveCache && onReviewChangesClick && (
               <div
                 style={{
                   display: 'flex',
@@ -588,7 +590,8 @@ const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={onReviewChangesClick}
                   className="review-changes-btn"
-                  title={`Review ${pendingChanges} pending changes`}
+                  data-testid="review-changes-btn"
+                  title={pendingChanges > 0 ? `Review ${pendingChanges} pending changes` : 'Review changes and download full file'}
                   style={{
                     background: '#4CAF50',
                     color: '#fff',
@@ -606,20 +609,22 @@ const Header: React.FC<HeaderProps> = ({
                   }}
                 >
                   {isMobile ? 'Review' : 'Review Changes'}
-                  <span
-                    style={{
-                      backgroundColor: '#fff',
-                      color: '#4CAF50',
-                      borderRadius: '12px',
-                      padding: isMobile ? '1px 6px' : '2px 8px',
-                      fontSize: isMobile ? '0.75rem' : '0.85rem',
-                      fontWeight: 'bold',
-                      minWidth: isMobile ? '20px' : '24px',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {pendingChanges}
-                  </span>
+                  
+                    <span
+                      style={{
+                        backgroundColor: '#fff',
+                        color: '#4CAF50',
+                        borderRadius: '12px',
+                        padding: isMobile ? '1px 6px' : '2px 8px',
+                        fontSize: isMobile ? '0.75rem' : '0.85rem',
+                        fontWeight: 'bold',
+                        minWidth: isMobile ? '20px' : '24px',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {pendingChanges}
+                    </span>
+                 
                 </button>
               </div>
             )}

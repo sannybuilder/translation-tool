@@ -408,12 +408,26 @@ function App() {
       // Only create a new tracker if we don't have one or if the original data is completely different
       // (e.g., when switching files)
       if (!changeTrackerRef.current || JSON.stringify(changeTrackerRef.current.originalData) !== JSON.stringify(originalTranslationData)) {
-        const tracker = new ChangeTracker(originalTranslationData, selectedTranslation);
+        const tracker = new ChangeTracker(originalTranslationData, selectedTranslation, () => {
+          // Update cache when changes are accepted
+          if (selectedTranslation) {
+            const snapshot = buildEditingCacheSnapshot({
+              selectedTranslation,
+              localFileName,
+              localEnglishFileName,
+              englishData,
+              originalTranslationData,
+              translationData,
+              changes: tracker.getAllChanges(),
+            });
+            saveEditingCache(snapshot);
+          }
+        });
         changeTrackerRef.current = tracker;
         setChangeTracker(tracker);
       }
     }
-  }, [originalTranslationData, selectedTranslation]);
+  }, [originalTranslationData, selectedTranslation, localFileName, localEnglishFileName, englishData, translationData]);
 
   // Update tracker's selected translation when it changes
   useEffect(() => {
@@ -557,26 +571,6 @@ function App() {
     // Update original data after save (deep clone to avoid reference issues)
     setOriginalTranslationData(JSON.parse(JSON.stringify(translationData)));
     setHasChanges(false);
-
-    // Clear only the change list; keep modified files in cache and UI
-    if (changeTrackerRef.current) {
-      changeTrackerRef.current.clearAll();
-      setChangeTrackerUpdateTrigger(prev => prev + 1);
-    }
-    // Update cache snapshot to reflect cleared change list
-    if (selectedTranslation) {
-      saveEditingCache({
-        source: 'local',
-        selectedTranslation,
-        localFileName: localFileName || selectedTranslation || 'translation.ini',
-        localEnglishFileName: localEnglishFileName || 'english.ini',
-        englishData,
-        originalTranslationData: JSON.parse(JSON.stringify(translationData)),
-        translationData,
-        changes: [],
-        lastEditedAt: Date.now(),
-      });
-    }
   };
 
   // Handle source mode change
@@ -718,6 +712,7 @@ function App() {
           screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
           pendingChanges={changeTracker?.getStats().pending || 0}
           onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
+          hasActiveCache={hasEditingCache()}
         />
         
         
@@ -752,6 +747,7 @@ function App() {
         screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
         pendingChanges={changeTracker?.getStats().pending || 0}
         onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
+        hasActiveCache={hasEditingCache()}
       />
 
 

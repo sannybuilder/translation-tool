@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import ChangeReview from '../ChangeReview';
 import { ChangeTracker } from '../../utils/changeTracker';
@@ -6,15 +6,24 @@ import { waitFor } from '@testing-library/react';
 
 describe.sequential('ChangeReview submit count behavior', () => {
   afterEach(() => cleanup());
+  
+  // Mock window.confirm to always return true
+  beforeAll(() => {
+    Object.defineProperty(window, 'confirm', {
+      writable: true,
+      value: vi.fn(() => true),
+    });
+  });
+
   const makeTrackerWithTwoChanges = () => {
     const original = { General: { Hello: 'A', Bye: 'B' } } as const;
-    const tracker = new ChangeTracker(original, 'de.ini');
+    const tracker = new ChangeTracker(original, 'de.ini', undefined);
     tracker.trackChange('General', 'Hello', 'AA');
     tracker.trackChange('General', 'Bye', 'BB');
     return tracker;
   };
 
-  it('shows Download <file> for download-full and updates to non-zero count when switching to copy-clipboard', async () => {
+  it('shows Download <file> button and action buttons', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
 
     render(
@@ -29,31 +38,13 @@ describe.sequential('ChangeReview submit count behavior', () => {
     // Initially shows download-full label
     expect(screen.getAllByRole('button', { name: /Download de\.ini/i })[0]).toBeTruthy();
 
-    // Switch to copy-clipboard
-    const methodSelect = screen.getAllByRole('combobox')[0];
-    fireEvent.change(methodSelect, { target: { value: 'copy-clipboard' } });
-
-    // After switching, auto-select all changes and update the count in the button label
-    expect(await screen.findByRole('button', { name: /Copy 2 Changes? to Clipboard/i })).toBeTruthy();
+    // Shows action buttons
+    expect(screen.getByRole('button', { name: /Copy To Clipboard/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Download Patch/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Create GitHub Issue/i })).toBeTruthy();
   });
 
-  it('shows correct count for download-patch after switching method', async () => {
-    const changeTracker = makeTrackerWithTwoChanges();
 
-    render(
-      <ChangeReview
-        changeTracker={changeTracker}
-        selectedTranslation="de.ini"
-        isOpen={true}
-        onClose={() => {}}
-      />
-    );
-
-    const methodSelect = screen.getAllByRole('combobox')[0];
-    fireEvent.change(methodSelect, { target: { value: 'download-patch' } });
-
-    expect(await screen.findByRole('button', { name: /Download Patch \(2 Changes?\)/i })).toBeTruthy();
-  });
 
   it('undoes a single change via Undo button and calls onUndo', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
@@ -98,6 +89,67 @@ describe.sequential('ChangeReview submit count behavior', () => {
     expect(onUndo).toHaveBeenCalledTimes(2);
   });
 
+  it('accepts a single change via Accept button', async () => {
+    const changeTracker = makeTrackerWithTwoChanges();
+    render(
+      <ChangeReview
+        changeTracker={changeTracker}
+        selectedTranslation="de.ini"
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    // Click accept for Hello
+    const acceptHello = await screen.findByTitle('Accept change to Hello');
+    fireEvent.click(acceptHello);
+
+    // The change should be marked as accepted and removed from unsubmitted changes
+    await waitFor(() => {
+      expect(changeTracker.getUnsubmittedChanges().length).toBe(1);
+    });
+  });
+
+  it('accepts an entire section via Accept Section button', async () => {
+    const changeTracker = makeTrackerWithTwoChanges();
+    render(
+      <ChangeReview
+        changeTracker={changeTracker}
+        selectedTranslation="de.ini"
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    const acceptSection = await screen.findByRole('button', { name: /Accept Section/i });
+    fireEvent.click(acceptSection);
+
+    // All changes in the section should be marked as accepted
+    await waitFor(() => {
+      expect(changeTracker.getUnsubmittedChanges().length).toBe(0);
+    });
+  });
+
+  it('accepts all changes via Accept All button', async () => {
+    const changeTracker = makeTrackerWithTwoChanges();
+    render(
+      <ChangeReview
+        changeTracker={changeTracker}
+        selectedTranslation="de.ini"
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    const acceptAll = await screen.findByRole('button', { name: /Accept All/i });
+    fireEvent.click(acceptAll);
+
+    // All changes should be marked as accepted
+    await waitFor(() => {
+      expect(changeTracker.getUnsubmittedChanges().length).toBe(0);
+    });
+  });
+
   it('undoes all changes after confirm and clears list', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
     const onUndo = vi.fn();
@@ -123,7 +175,7 @@ describe.sequential('ChangeReview submit count behavior', () => {
     window.confirm = originalConfirm;
   });
 
-  it('select all toggles selection and updates counts', async () => {
+  it('select all toggles selection', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
     render(
       <ChangeReview
@@ -134,20 +186,21 @@ describe.sequential('ChangeReview submit count behavior', () => {
       />
     );
 
-    // Switch to download-patch to show count
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'download-patch' } });
-    // Auto-selected to 2
-    expect(await screen.findByRole('button', { name: /Download Patch \(2 Changes?\)/i })).toBeTruthy();
-
-    // Deselect all (click the first select/deselect button found in toolbar)
+    // Initially no changes are selected
     const selectToggle = screen.getAllByRole('button', { name: /Deselect All|Select All/i })[0];
+    expect(selectToggle.textContent).toContain('Select All');
+
+    // Click to select all
     fireEvent.click(selectToggle);
-    expect(await screen.findByRole('button', { name: /Download Patch \(0 Changes?\)/i })).toBeTruthy();
+    expect(selectToggle.textContent).toContain('Deselect All');
+
+    // Click again to deselect all
+    fireEvent.click(selectToggle);
+    expect(selectToggle.textContent).toContain('Select All');
   });
 
-  it('submits copy-clipboard: writes to clipboard and calls onSubmit', async () => {
+  it('copy-clipboard button writes to clipboard', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
-    const onSubmit = vi.fn();
     const writeText = vi.fn().mockResolvedValue(void 0);
     const originalClipboardDesc = Object.getOwnPropertyDescriptor(navigator as any, 'clipboard');
     Object.defineProperty(navigator as any, 'clipboard', { value: { writeText }, configurable: true });
@@ -160,17 +213,19 @@ describe.sequential('ChangeReview submit count behavior', () => {
         selectedTranslation="de.ini"
         isOpen={true}
         onClose={() => {}}
-        onSubmit={onSubmit}
       />
     );
 
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'copy-clipboard' } });
-    const submit = await screen.findByRole('button', { name: /Copy 2 Changes? to Clipboard/i });
-    fireEvent.click(submit);
+    // Select all changes first
+    const selectAllButton = screen.getByRole('button', { name: /Select All/i });
+    fireEvent.click(selectAllButton);
+
+    // Click the clipboard button
+    const clipboardButton = screen.getByRole('button', { name: /Copy To Clipboard/i });
+    fireEvent.click(clipboardButton);
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledTimes(1);
-      expect(onSubmit).toHaveBeenCalled();
     });
 
     // restore
@@ -184,9 +239,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
     window.alert = originalAlert;
   });
 
-  it('submits download-patch: calls onSubmit and creates blob URL', async () => {
+  it('download-patch button creates blob URL', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
-    const onSubmit = vi.fn();
     const origCreateObjectURL = URL.createObjectURL;
     // @ts-ignore
     URL.createObjectURL = vi.fn(() => 'blob:mock');
@@ -197,24 +251,26 @@ describe.sequential('ChangeReview submit count behavior', () => {
         selectedTranslation="de.ini"
         isOpen={true}
         onClose={() => {}}
-        onSubmit={onSubmit}
       />
     );
 
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'download-patch' } });
-    const submit = await screen.findByRole('button', { name: /Download Patch \(2 Changes?\)/i });
-    fireEvent.click(submit);
+    // Select all changes first
+    const selectAllButton = screen.getByRole('button', { name: /Select All/i });
+    fireEvent.click(selectAllButton);
+
+    // Click the patch button
+    const patchButton = screen.getByRole('button', { name: /Download Patch/i });
+    fireEvent.click(patchButton);
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalled();
+      expect(URL.createObjectURL).toHaveBeenCalled();
     });
 
     URL.createObjectURL = origCreateObjectURL;
   });
 
-  it('submits github-issue: opens new window and calls onSubmit', async () => {
+  it('github-issue button opens new window', async () => {
     const changeTracker = makeTrackerWithTwoChanges();
-    const onSubmit = vi.fn();
     const origOpen = window.open;
     window.open = vi.fn();
 
@@ -224,18 +280,19 @@ describe.sequential('ChangeReview submit count behavior', () => {
         selectedTranslation="de.ini"
         isOpen={true}
         onClose={() => {}}
-        onSubmit={onSubmit}
       />
     );
 
-    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'github-issue' } });
-    // Auto-select should apply after switching method
-    const submit = await screen.findByRole('button', { name: /Create Issue with 2 Changes?/i });
-    fireEvent.click(submit);
+    // Select all changes first
+    const selectAllButton = screen.getByRole('button', { name: /Select All/i });
+    fireEvent.click(selectAllButton);
+
+    // Click the issue button
+    const issueButton = screen.getByRole('button', { name: /Create GitHub Issue/i });
+    fireEvent.click(issueButton);
 
     await waitFor(() => {
       expect(window.open).toHaveBeenCalled();
-      expect(onSubmit).toHaveBeenCalled();
     });
 
     window.open = origOpen;

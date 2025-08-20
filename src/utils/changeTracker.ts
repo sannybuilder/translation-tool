@@ -5,10 +5,12 @@ export class ChangeTracker {
   private changes: Map<string, TrackedChange> = new Map();
   public originalData: IniData = {}; // Made public for comparison
   private selectedTranslation: string = '';
+  private onChangesAccepted?: (acceptedChanges: TrackedChange[]) => void;
 
-  constructor(originalData: IniData, selectedTranslation?: string) {
+  constructor(originalData: IniData, selectedTranslation?: string, onChangesAccepted?: (acceptedChanges: TrackedChange[]) => void) {
     this.originalData = JSON.parse(JSON.stringify(originalData));
     this.selectedTranslation = selectedTranslation || '';
+    this.onChangesAccepted = onChangesAccepted;
   }
 
   // Track a change to a translation entry
@@ -43,6 +45,12 @@ export class ChangeTracker {
   getUnsubmittedChanges(): TrackedChange[] {
     return Array.from(this.changes.values())
       .filter(change => !change.submitted)
+      .sort((a, b) => a.timestamp - b.timestamp);
+  }
+
+  // Get all changes (including accepted ones)
+  getAllChanges(): TrackedChange[] {
+    return Array.from(this.changes.values())
       .sort((a, b) => a.timestamp - b.timestamp);
   }
 
@@ -92,6 +100,20 @@ export class ChangeTracker {
     return null;
   }
 
+  // Accept a specific change - marks it as accepted but keeps it tracked
+  acceptChange(changeId: string): void {
+    const change = this.changes.get(changeId);
+    if (change) {
+      change.submitted = true;
+      change.submittedAt = Date.now();
+      
+      // Notify about accepted changes
+      if (this.onChangesAccepted) {
+        this.onChangesAccepted([change]);
+      }
+    }
+  }
+
   // Undo all changes in a section - returns map of key to original value
   undoSection(section: string): Map<string, string> {
     const restoredValues = new Map<string, string>();
@@ -106,6 +128,23 @@ export class ChangeTracker {
     // in-memory only
     
     return restoredValues;
+  }
+
+  // Accept all changes in a section - marks them as accepted but keeps them tracked
+  acceptSection(section: string): void {
+    const sectionChanges = Array.from(this.changes.values())
+      .filter(change => change.section === section && !change.submitted);
+    
+    const now = Date.now();
+    sectionChanges.forEach(change => {
+      change.submitted = true;
+      change.submittedAt = now;
+    });
+    
+    // Notify about accepted changes
+    if (this.onChangesAccepted && sectionChanges.length > 0) {
+      this.onChangesAccepted(sectionChanges);
+    }
   }
 
   // Undo all unsubmitted changes - returns map of section/key to original value
@@ -125,6 +164,23 @@ export class ChangeTracker {
     // in-memory only
     
     return restoredValues;
+  }
+
+  // Accept all unsubmitted changes - marks them as accepted but keeps them tracked
+  acceptAll(): void {
+    const unsubmittedChanges = Array.from(this.changes.values())
+      .filter(change => !change.submitted);
+    
+    const now = Date.now();
+    unsubmittedChanges.forEach(change => {
+      change.submitted = true;
+      change.submittedAt = now;
+    });
+    
+    // Notify about accepted changes
+    if (this.onChangesAccepted && unsubmittedChanges.length > 0) {
+      this.onChangesAccepted(unsubmittedChanges);
+    }
   }
 
   // Generate a diff/patch for selected changes

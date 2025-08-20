@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ChangeTracker } from '../utils/changeTracker';
-import type { TrackedChange, SubmissionOptions } from '../types/changeTracking';
+import type { TrackedChange } from '../types/changeTracking';
 
 interface ChangeReviewProps {
   changeTracker: ChangeTracker | null;
   selectedTranslation: string;
-  onSubmit?: (changes: TrackedChange[], options: SubmissionOptions) => void;
   refreshTrigger?: number; // trigger re-compute
   isOpen: boolean;
   onClose: () => void;
@@ -17,7 +16,6 @@ interface ChangeReviewProps {
 const ChangeReview: React.FC<ChangeReviewProps> = ({
   changeTracker,
   selectedTranslation,
-  onSubmit,
   refreshTrigger,
   isOpen,
   onClose,
@@ -27,8 +25,7 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
 }) => {
   const [unsubmittedChanges, setUnsubmittedChanges] = useState<TrackedChange[]>([]);
   const [selectedChanges, setSelectedChanges] = useState<Set<string>>(new Set());
-  const [submissionType, setSubmissionType] = useState<SubmissionOptions['type']>('download-full');
-  const [groupBySection, setGroupBySection] = useState(true);
+
   const [stats, setStats] = useState({ total: 0, submitted: 0, pending: 0, sections: 0 });
 
   useEffect(() => {
@@ -47,12 +44,7 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
     }
   }, [isOpen, changeTracker]);
 
-  // When switching to a partial submission method, auto-select all if nothing is selected
-  useEffect(() => {
-    if (submissionType !== 'download-full' && selectedChanges.size === 0 && unsubmittedChanges.length > 0) {
-      setSelectedChanges(new Set(unsubmittedChanges.map(c => c.id)));
-    }
-  }, [submissionType, unsubmittedChanges]);
+
 
   const handleSelectAll = () => {
     if (selectedChanges.size === unsubmittedChanges.length) {
@@ -96,6 +88,16 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
     }
   };
 
+  const handleAcceptChange = (changeId: string) => {
+    if (!changeTracker) return;
+    changeTracker.acceptChange(changeId);
+    setUnsubmittedChanges(changeTracker.getUnsubmittedChanges());
+    setStats(changeTracker.getStats());
+    const newSelected = new Set(selectedChanges);
+    newSelected.delete(changeId);
+    setSelectedChanges(newSelected);
+  };
+
   const handleUndoSection = (section: string) => {
     if (!changeTracker || !onUndo) return;
     const restoredValues = changeTracker.undoSection(section);
@@ -107,6 +109,16 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
       unsubmittedChanges.filter(c => c.section === section).forEach(c => newSelected.delete(c.id));
       setSelectedChanges(newSelected);
     }
+  };
+
+  const handleAcceptSection = (section: string) => {
+    if (!changeTracker) return;
+    changeTracker.acceptSection(section);
+    setUnsubmittedChanges(changeTracker.getUnsubmittedChanges());
+    setStats(changeTracker.getStats());
+    const newSelected = new Set(selectedChanges);
+    unsubmittedChanges.filter(c => c.section === section).forEach(c => newSelected.delete(c.id));
+    setSelectedChanges(newSelected);
   };
 
   const handleUndoAll = () => {
@@ -125,50 +137,26 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
     }
   };
 
-  const handleSubmitChanges = async () => {
-    if (submissionType === 'download-full') {
-      if (onDownloadFullFile) onDownloadFullFile();
-      return;
-    }
-    if (!changeTracker || selectedChanges.size === 0) return;
-    const changesToSubmit = unsubmittedChanges.filter(c => selectedChanges.has(c.id));
-    const options: SubmissionOptions = { type: submissionType, format: submissionType === 'copy-clipboard' ? 'ini-snippet' : 'diff', includeContext: true };
-    if (submissionType === 'copy-clipboard') {
-      const patch = changeTracker.generatePatch(Array.from(selectedChanges), 'ini-snippet');
-      await navigator.clipboard.writeText(patch);
-      alert(`Copied ${selectedChanges.size} changes to clipboard!`);
-    } else if (submissionType === 'download-patch') {
-      const patch = changeTracker.generatePatch(Array.from(selectedChanges), 'diff');
-      const blob = new Blob([patch], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${selectedTranslation.replace('.ini', '')}_partial_${Date.now()}.patch`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } else if (submissionType === 'github-issue') {
-      const patch = changeTracker.generatePatch(Array.from(selectedChanges), 'ini-snippet');
-      const issueTitle = `Translation update for ${selectedTranslation}: ${selectedChanges.size} changes`;
-      const issueBody = `## Partial Translation Update\n\n**File:** ${selectedTranslation}\n**Changes:** ${selectedChanges.size}\n**Sections affected:** ${new Set(changesToSubmit.map(c => c.section)).size}\n\n### Changes:\n\`\`\`ini\n${patch}\n\`\`\`\n\n---\n*Submitted using Translation Tool Partial Update feature*`;
-      const githubUrl = `https://github.com/sannybuilder/translations/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
-      window.open(githubUrl, '_blank');
-    }
-    changeTracker.clearAll();
-    setSelectedChanges(new Set());
-    setUnsubmittedChanges([]);
+  const handleAcceptAll = () => {
+    if (!changeTracker) return;
+    const changeCount = unsubmittedChanges.length;
+    const message = `Are you sure you want to accept all ${changeCount} change${changeCount !== 1 ? 's' : ''}?`;
+    if (!window.confirm(message)) return;
+    changeTracker.acceptAll();
+    setUnsubmittedChanges(changeTracker.getUnsubmittedChanges());
     setStats(changeTracker.getStats());
-    if (onSubmit) onSubmit(changesToSubmit, options);
+    setSelectedChanges(new Set());
   };
 
-  const groupedChanges = groupBySection
-    ? unsubmittedChanges.reduce((acc, change) => {
-        if (!acc[change.section]) acc[change.section] = [];
-        acc[change.section].push(change);
-        return acc;
-      }, {} as Record<string, TrackedChange[]>)
-    : { 'All Changes': unsubmittedChanges };
+  const handleSubmitChanges = () => {
+    if (onDownloadFullFile) onDownloadFullFile();
+  };
+
+  const groupedChanges = unsubmittedChanges.reduce((acc, change) => {
+    if (!acc[change.section]) acc[change.section] = [];
+    acc[change.section].push(change);
+    return acc;
+  }, {} as Record<string, TrackedChange[]>);
 
   if (!changeTracker) return null;
 
@@ -189,53 +177,76 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
             boxShadow: !isMobile ? '-4px 0 12px rgba(0,0,0,0.5)' : 'none', transform: isOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.3s ease-in-out'
           }}
         >
-          <div style={{ padding: isMobile ? '0.75rem' : '1rem', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, color: '#fff', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>Review Changes</h3>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
-          </div>
+                     <div style={{ padding: isMobile ? '0.75rem' : '1rem', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+             <h3 style={{ margin: 0, color: '#fff', fontSize: isMobile ? '1.1rem' : '1.25rem' }}>
+               Review Changes {stats.pending > 0 && <span style={{ color: '#4CAF50', fontSize: '0.9em' }}>({stats.pending})</span>}
+             </h3>
+             <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                      </div>
 
-          <div style={{ padding: isMobile ? '0.75rem' : '1rem', backgroundColor: '#2a2a2a', borderBottom: '1px solid #333' }}>
-            <div style={{ display: 'flex', gap: '1rem', fontSize: isMobile ? '0.85rem' : '0.9rem', color: '#888' }}>
-              <span>Pending: <strong style={{ color: '#4CAF50' }}>{stats.pending}</strong></span>
-              <span>Sections: <strong style={{ color: '#888' }}>{stats.sections}</strong></span>
-            </div>
-          </div>
-
-          <div style={{ padding: isMobile ? '0.75rem' : '1rem', borderBottom: '1px solid #333' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888', fontSize: isMobile ? '0.85rem' : '0.9rem' }}>Submission Method:</label>
-            <select value={submissionType} onChange={(e) => setSubmissionType(e.target.value as SubmissionOptions['type'])} style={{ width: '100%', padding: '0.5rem', backgroundColor: '#2a2a2a', color: '#fff', border: '1px solid #444', borderRadius: '4px', fontSize: '0.9rem' }}>
-              <option value="download-full">Download Full File</option>
-              <option value="copy-clipboard">Copy to Clipboard</option>
-              <option value="download-patch">Download Patch File</option>
-              <option value="github-issue">Create GitHub Issue</option>
-            </select>
-          </div>
-
-          <div style={{ padding: isMobile ? '0.5rem 0.75rem' : '0.5rem 1rem', borderBottom: '1px solid #333', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={handleSelectAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#2a2a2a', color: '#fff', border: '1px solid #444', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }}>
-              {selectedChanges.size === unsubmittedChanges.length ? (isMobile ? 'Deselect' : 'Deselect All') : (isMobile ? 'Select' : 'Select All')}
-            </button>
-            {unsubmittedChanges.length > 0 && (
-              <button onClick={handleUndoAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#2a2a2a', color: '#bbb', border: '1px solid #555', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }} title="Undo all changes">Undo All</button>
+                                           {/* Instructions - only show when there are active changes */}
+            {stats.pending > 0 && (
+              <div style={{ padding: isMobile ? '0.75rem' : '1rem', backgroundColor: '#1f1f1f', borderBottom: '1px solid #333' }}>
+                <div style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: '#aaa', lineHeight: '1.4' }}>
+                  <strong>What does Accept do?</strong><br/>
+                  When you <strong>Accept</strong> a change, it keeps the new value in your file but removes it from this review panel. You can always download the translation file with all accepted changes.
+                </div>
+              </div>
             )}
-            <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#888', fontSize: isMobile ? '0.8rem' : '0.85rem' }}>
-              <input type="checkbox" checked={groupBySection} onChange={(e) => setGroupBySection(e.target.checked)} />
-              {isMobile ? 'Group' : 'Group by section'}
-            </label>
-          </div>
+
+          {unsubmittedChanges.length > 0 && (
+            <div style={{ padding: isMobile ? '0.5rem 0.75rem' : '0.5rem 1rem', borderBottom: '1px solid #333', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button onClick={handleSelectAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#2a2a2a', color: '#fff', border: '1px solid #444', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }}>
+                {selectedChanges.size === unsubmittedChanges.length ? (isMobile ? 'Deselect' : 'Deselect All') : (isMobile ? 'Select' : 'Select All')}
+              </button>
+              <button onClick={handleUndoAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#2a2a2a', color: '#bbb', border: '1px solid #555', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }} title="Undo all changes">Undo All</button>
+              <button onClick={handleAcceptAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#4CAF50', color: '#fff', border: '1px solid #4CAF50', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }} title="Accept all changes">Accept All</button>
+            </div>
+          )}
 
           <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0.75rem' : '1rem', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
-            {Object.entries(groupedChanges).map(([sectionName, changes]) => (
+            {unsubmittedChanges.length === 0 ? (
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%', 
+                textAlign: 'center',
+                padding: '2rem 1rem',
+                color: '#888'
+              }}>
+                <div style={{ 
+                  fontSize: isMobile ? '1.1rem' : '1.25rem', 
+                  fontWeight: 'bold', 
+                  marginBottom: '0.5rem',
+                  color: '#4CAF50'
+                }}>
+                  You're caught up!
+                </div>
+                <div style={{ 
+                  fontSize: isMobile ? '0.85rem' : '0.9rem', 
+                  lineHeight: '1.4',
+                  maxWidth: '280px'
+                }}>
+                  You can download the translation file with the changes applied or continue editing.
+                </div>
+              </div>
+            ) : (
+              Object.entries(groupedChanges).map(([sectionName, changes]) => (
               <div key={sectionName} style={{ marginBottom: '1.5rem' }}>
-                {groupBySection && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: 1 }} onClick={() => handleSelectSection(sectionName)}>
-                      <input type="checkbox" checked={changes.every(c => selectedChanges.has(c.id))} onChange={() => {}} style={{ cursor: 'pointer' }} />
-                      <h4 style={{ margin: 0, color: '#888', fontSize: '0.9rem' }}>[{sectionName}] ({changes.length})</h4>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleUndoSection(sectionName); }} style={{ padding: '0.2rem 0.5rem', backgroundColor: 'transparent', color: '#aaa', border: '1px solid #555', borderRadius: '3px', fontSize: '0.75rem', cursor: 'pointer' }} title={`Undo all changes in ${sectionName}`}>Undo Section</button>
+                {/* Section action buttons row */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <button onClick={(e) => { e.stopPropagation(); handleUndoSection(sectionName); }} style={{ padding: '0.2rem 0.5rem', backgroundColor: 'transparent', color: '#aaa', border: '1px solid #555', borderRadius: '3px', fontSize: '0.75rem', cursor: 'pointer' }} title={`Undo all changes in ${sectionName}`}>Undo Section</button>
+                  <button onClick={(e) => { e.stopPropagation(); handleAcceptSection(sectionName); }} style={{ padding: '0.2rem 0.5rem', backgroundColor: '#4CAF50', color: '#fff', border: '1px solid #4CAF50', borderRadius: '3px', fontSize: '0.75rem', cursor: 'pointer' }} title={`Accept all changes in ${sectionName}`}>Accept Section</button>
+                </div>
+                {/* Section title row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', flex: 1 }} onClick={() => handleSelectSection(sectionName)}>
+                    <input type="checkbox" checked={changes.every(c => selectedChanges.has(c.id))} onChange={() => {}} style={{ cursor: 'pointer' }} />
+                    <h4 style={{ margin: 0, color: '#888', fontSize: '0.9rem' }}>[{sectionName}] ({changes.length})</h4>
                   </div>
-                )}
+                </div>
                 {changes.map((change) => (
                   <div key={change.id} style={{ padding: isMobile ? '0.5rem' : '0.75rem', marginBottom: '0.5rem', backgroundColor: selectedChanges.has(change.id) ? '#2a3a2a' : '#242424', border: `1px solid ${selectedChanges.has(change.id) ? '#4CAF50' : '#333'}`, borderRadius: '4px', position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', cursor: 'pointer' }} onClick={() => handleToggleChange(change.id)}>
@@ -252,23 +263,250 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                         </div>
                       </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleUndoChange(change.id, change.section, change.key); }} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', padding: '0.15rem 0.4rem', backgroundColor: 'transparent', color: '#999', border: '1px solid #555', borderRadius: '3px', fontSize: '0.7rem', cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }} title={`Undo change to ${change.key}`}>Undo</button>
+                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem' }}>
+                      <button onClick={(e) => { e.stopPropagation(); handleAcceptChange(change.id); }} style={{ padding: '0.15rem 0.4rem', backgroundColor: '#4CAF50', color: '#fff', border: '1px solid #4CAF50', borderRadius: '3px', fontSize: '0.7rem', cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }} title={`Accept change to ${change.key}`}>Accept</button>
+                      <button onClick={(e) => { e.stopPropagation(); handleUndoChange(change.id, change.section, change.key); }} style={{ padding: '0.15rem 0.4rem', backgroundColor: 'transparent', color: '#999', border: '1px solid #555', borderRadius: '3px', fontSize: '0.7rem', cursor: 'pointer', opacity: 0.8, transition: 'opacity 0.2s ease' }} title={`Undo change to ${change.key}`}>Undo</button>
+                    </div>
                   </div>
                 ))}
               </div>
-            ))}
+            ))
+            )}
           </div>
 
           <div style={{ padding: isMobile ? '0.75rem' : '1rem', borderTop: '1px solid #333' }}>
-            <button
+            {/* Instructions for submission - only show when there are changes */}
+            {unsubmittedChanges.length > 0 && (
+              <>
+                <div style={{ 
+                  padding: '0.5rem 0.75rem', 
+                  marginBottom: '0.75rem', 
+                  backgroundColor: selectedChanges.size > 0 ? '#1f3a1f' : '#2a2a2a', 
+                  border: `1px solid ${selectedChanges.size > 0 ? '#4CAF50' : '#444'}`, 
+                  borderRadius: '4px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ 
+                    fontSize: isMobile ? '0.8rem' : '0.85rem', 
+                    color: selectedChanges.size > 0 ? '#4CAF50' : '#888',
+                    fontWeight: selectedChanges.size > 0 ? 'bold' : 'normal'
+                  }}>
+                    {selectedChanges.size === 0 
+                      ? 'Select changes above and then:' 
+                      : `${selectedChanges.size} change${selectedChanges.size !== 1 ? 's' : ''} selected`
+                    }
+                  </div>
+                </div>
+
+                {/* Action buttons row */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: isMobile ? '0.5rem' : '0.75rem', 
+                  marginBottom: '0.75rem',
+                  justifyContent: 'space-between'
+                }}>
+                  {/* Copy to Clipboard Button */}
+                  <button
+                    onClick={async () => {
+                      if (!changeTracker || selectedChanges.size === 0) return;
+                      const patch = changeTracker.generatePatch(Array.from(selectedChanges), 'ini-snippet');
+                      await navigator.clipboard.writeText(patch);
+                      alert(`Copied ${selectedChanges.size} changes to clipboard!`);
+                    }}
+                    disabled={selectedChanges.size === 0}
+                    style={{ 
+                      flex: 1,
+                      aspectRatio: '1',
+                      padding: isMobile ? '0.5rem' : '0.75rem',
+                      backgroundColor: selectedChanges.size > 0 ? '#1565C0' : '#333',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: isMobile ? '0.8rem' : '0.9rem',
+                      cursor: selectedChanges.size > 0 ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedChanges.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#0D47A1';
+                        // e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedChanges.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#1565C0';
+                        // e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }
+                    }}
+                    title={`Copy ${selectedChanges.size} change${selectedChanges.size !== 1 ? 's' : ''} to clipboard`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                    <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
+                      {isMobile ? 'Copy' : 'Copy To Clipboard'}
+                    </span>
+                  </button>
+
+                  {/* Download Patch Button */}
+                  <button
+                    onClick={() => {
+                      if (!changeTracker || selectedChanges.size === 0) return;
+                      const patch = changeTracker.generatePatch(Array.from(selectedChanges), 'diff');
+                      const blob = new Blob([patch], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${selectedTranslation.replace('.ini', '')}_partial_${Date.now()}.patch`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    disabled={selectedChanges.size === 0}
+                    style={{ 
+                      flex: 1,
+                      aspectRatio: '1',
+                      padding: isMobile ? '0.5rem' : '0.75rem',
+                      backgroundColor: selectedChanges.size > 0 ? '#E65100' : '#333',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: isMobile ? '0.8rem' : '0.9rem',
+                      cursor: selectedChanges.size > 0 ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedChanges.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#BF360C';
+                        // e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedChanges.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#E65100';
+                        // e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }
+                    }}
+                    title={`Download patch for ${selectedChanges.size} change${selectedChanges.size !== 1 ? 's' : ''}`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
+                      {isMobile ? 'Patch' : 'Download Patch'}
+                    </span>
+                  </button>
+
+                  {/* GitHub Issue Button */}
+                  <button
+                    onClick={() => {
+                      if (!changeTracker || selectedChanges.size === 0) return;
+                      const patch = changeTracker.generatePatch(Array.from(selectedChanges), 'ini-snippet');
+                      const issueTitle = `Translation update for ${selectedTranslation}: ${selectedChanges.size} changes`;
+                      const issueBody = `## Partial Translation Update\n\n**File:** ${selectedTranslation}\n**Changes:** ${selectedChanges.size}\n**Sections affected:** ${new Set(unsubmittedChanges.filter(c => selectedChanges.has(c.id)).map(c => c.section)).size}\n\n### Changes:\n\`\`\`ini\n${patch}\n\`\`\`\n\n---\n*Submitted using Translation Tool Partial Update feature*`;
+                      const githubUrl = `https://github.com/sannybuilder/translations/issues/new?title=${encodeURIComponent(issueTitle)}&body=${encodeURIComponent(issueBody)}`;
+                      window.open(githubUrl, '_blank');
+                    }}
+                    disabled={selectedChanges.size === 0}
+                    style={{ 
+                      flex: 1,
+                      aspectRatio: '1',
+                      padding: isMobile ? '0.5rem' : '0.75rem',
+                      backgroundColor: selectedChanges.size > 0 ? '#9C27B0' : '#333',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: isMobile ? '0.8rem' : '0.9rem',
+                      cursor: selectedChanges.size > 0 ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedChanges.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#7B1FA2';
+                        // e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedChanges.size > 0) {
+                        e.currentTarget.style.backgroundColor = '#9C27B0';
+                        // e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }
+                    }}
+                    title={`Create GitHub issue for ${selectedChanges.size} change${selectedChanges.size !== 1 ? 's' : ''}`}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
+                      {isMobile ? 'Issue' : 'Create GitHub Issue'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Separator */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  marginBottom: '0.75rem',
+                  color: '#666',
+                  fontSize: isMobile ? '0.75rem' : '0.8rem'
+                }}>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: '#444' }}></div>
+                  <span style={{ margin: '0 0.75rem' }}>OR</span>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: '#444' }}></div>
+                </div>
+              </>
+            )}
+
+             {/* Download Full File Button */}
+             <button
               onClick={handleSubmitChanges}
-              disabled={submissionType !== 'download-full' && selectedChanges.size === 0}
-              style={{ width: '100%', padding: '0.75rem', backgroundColor: (submissionType === 'download-full' || selectedChanges.size > 0) ? '#4CAF50' : '#333', color: 'white', border: 'none', borderRadius: '4px', fontSize: '1rem', fontWeight: 'bold', cursor: (submissionType === 'download-full' || selectedChanges.size > 0) ? 'pointer' : 'not-allowed', transition: 'all 0.3s ease' }}
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem', 
+                backgroundColor: '#4CAF50', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '4px', 
+                fontSize: '1rem', 
+                fontWeight: 'bold', 
+                cursor: 'pointer', 
+                transition: 'all 0.3s ease' 
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#45a049';
+                // e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#4CAF50';
+                // e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             >
-              {submissionType === 'copy-clipboard' && `Copy ${selectedChanges.size} Change${selectedChanges.size !== 1 ? 's' : ''} to Clipboard`}
-              {submissionType === 'download-patch' && `Download Patch (${selectedChanges.size} Change${selectedChanges.size !== 1 ? 's' : ''})`}
-              {submissionType === 'download-full' && `Download ${selectedTranslation}`}
-              {submissionType === 'github-issue' && `Create Issue with ${selectedChanges.size} Change${selectedChanges.size !== 1 ? 's' : ''}`}
+              Download {selectedTranslation}
             </button>
           </div>
         </div>

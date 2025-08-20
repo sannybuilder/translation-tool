@@ -1,8 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
 import Header from '../Header';
 
 describe('Header', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const defaultProps = {
     availableTranslations: ['en.ini', 'de.ini', 'fr.ini'],
     selectedTranslation: 'de.ini',
@@ -34,9 +38,21 @@ describe('Header', () => {
   });
 
   it('shows review changes button when pending changes exist', () => {
-    render(<Header {...defaultProps} pendingChanges={3} />);
-    const reviewButtons = screen.getAllByRole('button', { name: /Review Changes/i });
-    expect(reviewButtons.length).toBeGreaterThan(0);
+    render(<Header {...defaultProps} pendingChanges={3} hasActiveCache={true} />);
+    const reviewButton = screen.getByTestId('review-changes-btn');
+    expect(reviewButton).toBeTruthy();
+  });
+
+  it('shows review changes button even with 0 pending changes when there is active cache', () => {
+    render(<Header {...defaultProps} pendingChanges={0} hasActiveCache={true} />);
+    const reviewButton = screen.getByTestId('review-changes-btn');
+    expect(reviewButton).toBeTruthy();
+  });
+
+  it('does not show review changes button when there is no active cache', () => {
+    render(<Header {...defaultProps} hasActiveCache={false} />);
+    const reviewButton = screen.queryByTestId('review-changes-btn');
+    expect(reviewButton).toBeNull();
   });
 
   it('shows cached indicator when using GitHub cache', () => {
