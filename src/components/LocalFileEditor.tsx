@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { readLocalFile, fetchGitHubFileList } from '../utils/githubCache';
-import { parseIni } from '../utils/iniParser';
 import type { IniData } from '../utils/iniParser';
 
 interface LocalFileEditorProps {
@@ -61,8 +60,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
 
       if (iniFiles.length === 1) {
         const file = iniFiles[0];
-        const fileContent = await readLocalFile(file);
-        const parsedData = parseIni(fileContent);
+        const parsedData = await readLocalFile(file);
 
         if (isEnglishFile(file.name)) {
           englishFile = file;
@@ -87,13 +85,10 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
           console.log(`Guessing base language: ${englishFile.name}, translation: ${translationFile.name}`);
         }
 
-        const [englishContent, translationContent] = await Promise.all([
+        const [englishData, translationData] = await Promise.all([
           readLocalFile(englishFile),
           readLocalFile(translationFile),
         ]);
-
-        const englishData = parseIni(englishContent);
-        const translationData = parseIni(translationContent);
 
         onFilesLoaded(englishData, translationData, englishFile.name, translationFile.name);
       }

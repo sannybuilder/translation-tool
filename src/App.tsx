@@ -6,7 +6,7 @@ import GitHubErrorView from './components/GitHubErrorView';
 import TranslationSections from './components/TranslationSections';
 import ModeChangeDialog from './components/ModeChangeDialog';
 import ChangeReview from './components/ChangeReview.tsx';
-import { parseIni, serializeIni, countFormatSpecifiers } from './utils/iniParser';
+import { serializeIni, countFormatSpecifiers } from './utils/iniParser';
 import type { IniData } from './utils/iniParser';
 import type { TranslationEntry } from './types/translation';
 // session types removed in favor of unified editing cache
@@ -16,6 +16,8 @@ import {
   fetchGitHubFileList,
   fetchTranslationFile,
   readLocalFile,
+  getEncodingByLangId,
+  encodeTextWithEncoding,
 } from './utils/githubCache';
 import { saveEditingCache, loadEditingCache, clearEditingCache, hasEditingCache, buildEditingCacheSnapshot } from './utils/sessionManager';
 import { ChangeTracker } from './utils/changeTracker';
@@ -151,8 +153,7 @@ function App() {
 
     try {
       setError(null);
-      const content = await readLocalFile(file);
-      const parsed = parseIni(content);
+      const parsed = await readLocalFile(file);
       handleFilesLoaded(parsed, {}, file.name, '');
     } catch (err) {
       console.error('Error loading local English file:', err);
@@ -167,8 +168,7 @@ function App() {
 
     try {
       setError(null);
-      const content = await readLocalFile(file);
-      const parsed = parseIni(content);
+      const parsed = await readLocalFile(file);
       handleFilesLoaded({}, parsed, '', file.name);
     } catch (err) {
       console.error('Error loading local translation file:', err);
@@ -553,11 +553,35 @@ function App() {
   const handleSave = () => {
     const content = serializeIni(translationData, englishData);
 
-    // Save as UTF-8 to support all Unicode characters (Armenian, Russian, etc.)
-    // UTF-8 is backward compatible with ASCII, so English and German files will work fine too
-    const blob = new Blob([content], {
-      type: 'text/plain;charset=utf-8',
-    });
+    // Extract LANGID from the translation data to determine encoding
+    const langId = translationData['']?.['LANGID'];
+    
+    if (!langId) {
+      setError('Cannot save: No LANGID found in file. LANGID is required to determine proper ANSI encoding.');
+      return;
+    }
+
+    const encoding = getEncodingByLangId(langId);
+    
+    if (!encoding) {
+      setError(`Cannot save: Unknown LANGID ${langId}. Unable to determine proper ANSI encoding.`);
+      return;
+    }
+
+    // Encode the content with the appropriate encoding
+    let blob: Blob;
+    
+    try {
+      const encodedData = encodeTextWithEncoding(content, encoding);
+      blob = new Blob([encodedData], {
+        type: `text/plain;charset=${encoding}`,
+      });
+      console.log(`Saving file with encoding: ${encoding} for LANGID: ${langId}`);
+    } catch (error) {
+      console.error('Failed to encode file:', error);
+      setError(`Failed to encode file with ${encoding} encoding: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return;
+    }
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

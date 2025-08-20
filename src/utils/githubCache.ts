@@ -1,5 +1,7 @@
 import { parseIni } from './iniParser';
 import type { IniData } from './iniParser';
+import iconv from 'iconv-lite';
+import { getEncodingForLcid } from './localeCodepage';
 
 // GitHub configuration
 export const GITHUB_REPO = 'sannybuilder/translations';
@@ -61,54 +63,19 @@ export function setCachedData<T>(key: string, data: T): void {
 }
 
 // Helper function to get encoding based on LANGID
-const getEncodingByLangId = (langId: string): string => {
+export const getEncodingByLangId = (langId: string): string | null => {
   const id = parseInt(langId, 10);
   
-  // LANGID to encoding mapping
-  const langIdMap: { [key: number]: string } = {
-    1033: 'windows-1252', // English (US)
-    2057: 'windows-1252', // English (UK)
-    1031: 'windows-1252', // German (Germany)
-    2055: 'windows-1252', // German (Switzerland)
-    3079: 'windows-1252', // German (Austria)
-    1049: 'windows-1251', // Russian
-    2073: 'windows-1251', // Russian (Moldova)
-    1058: 'windows-1251', // Ukrainian
-    1059: 'windows-1251', // Belarusian
-    1067: 'utf-8',        // Armenian (often uses UTF-8)
-    1026: 'windows-1251', // Bulgarian
-    1071: 'windows-1251', // Macedonian
-    1087: 'windows-1251', // Kazakh
-    1088: 'windows-1251', // Kyrgyz
-    2092: 'windows-1251', // Azerbaijani (Cyrillic)
-    1036: 'windows-1252', // French
-    1040: 'windows-1252', // Italian
-    1034: 'windows-1252', // Spanish
-    1029: 'windows-1250', // Czech
-    1045: 'windows-1250', // Polish
-    1038: 'windows-1250', // Hungarian
-    1048: 'windows-1250', // Romanian
-    1050: 'windows-1250', // Croatian
-    1051: 'windows-1250', // Slovak
-    1060: 'windows-1250', // Slovenian
-    1032: 'windows-1253', // Greek
-    1055: 'windows-1254', // Turkish
-    1037: 'windows-1255', // Hebrew
-    1025: 'windows-1256', // Arabic
-    1054: 'windows-874',  // Thai
-    1041: 'shift-jis',    // Japanese
-    1042: 'euc-kr',       // Korean
-    2052: 'gb18030',      // Chinese (Simplified)
-    1028: 'big5',         // Chinese (Traditional)
-  };
+  if (isNaN(id)) {
+    return null;
+  }
   
-  return langIdMap[id] || 'utf-8';
+  // Use automatic LCID to codepage mapping
+  return getEncodingForLcid(id);
 };
 
 // Helper function to decode text with LANGID-based encoding detection
-export async function decodeAnsiText(response: Response): Promise<string> {
-  const buffer = await response.arrayBuffer();
-  
+export async function decodeAnsiText(buffer: ArrayBuffer): Promise<string> {
   // First, try to extract LANGID from the beginning of the file
   const uint8Array = new Uint8Array(buffer);
   const first100Bytes = uint8Array.slice(0, Math.min(100, uint8Array.length));
@@ -122,28 +89,37 @@ export async function decodeAnsiText(response: Response): Promise<string> {
       langId = langIdMatch[1];
     }
   } catch {
-    // Couldn't extract LANGID, will use fallback
+    // Couldn't extract LANGID
   }
   
   // If we found a LANGID, use it to determine encoding
   if (langId) {
     const encoding = getEncodingByLangId(langId);
+    if (!encoding) {
+      throw new Error(`Unknown LANGID: ${langId}. Unable to determine proper encoding.`);
+    }
     try {
       const decoder = new TextDecoder(encoding);
       return decoder.decode(buffer);
     } catch {
-      // If the determined encoding fails, fall through to UTF-8
+      throw new Error(`Failed to decode file with encoding ${encoding} for LANGID ${langId}`);
     }
   }
   
-  // Fallback: try UTF-8 first (most universal)
+  // No LANGID found - this is an error for INI files
+  throw new Error('No LANGID found in file. Cannot determine proper ANSI encoding.');
+}
+
+// Helper function to encode text with specified encoding
+export function encodeTextWithEncoding(text: string, encoding: string): Uint8Array {
+  
   try {
-    const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
-    return utf8Decoder.decode(buffer);
-  } catch {
-    // Final fallback to Windows-1252 for Western European files
-    const win1252Decoder = new TextDecoder('windows-1252');
-    return win1252Decoder.decode(buffer);
+    // iconv.encode returns a Buffer, which is a subclass of Uint8Array in Node.js
+    // In the browser environment with iconv-lite, it returns a Uint8Array-compatible object
+    const encoded = iconv.encode(text, encoding);
+    return new Uint8Array(encoded);
+  } catch (error) {
+    throw new Error(`Failed to encode text with ${encoding}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -220,7 +196,7 @@ export async function fetchGitHubFileList(): Promise<{ files: string[], englishD
     
     // Load English data from GitHub
     const englishResponse = await fetch(`${GITHUB_RAW_URL}/english.ini`);
-    const englishText = await decodeAnsiText(englishResponse);
+    const englishText = await decodeAnsiText(await englishResponse.arrayBuffer());
     const englishData = parseIni(englishText);
     
     return { files: iniFiles, englishData };
@@ -254,7 +230,7 @@ export async function fetchTranslationFile(filename: string): Promise<IniData> {
       throw new Error(`Failed to load ${filename} (Error ${response.status}).`);
     }
     
-    const text = await decodeAnsiText(response);
+    const text = await decodeAnsiText(await response.arrayBuffer());
     return parseIni(text);
   } catch (error) {
     clearTimeout(timeoutId);
@@ -263,51 +239,16 @@ export async function fetchTranslationFile(filename: string): Promise<IniData> {
 }
 
 // Helper function to read local file content with LANGID-based encoding detection
-export function readLocalFile(file: File): Promise<string> {
+export function readLocalFile(file: File): Promise<IniData> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const buffer = e.target?.result as ArrayBuffer;
-      
-      // First, try to extract LANGID from the beginning of the file
-      const uint8Array = new Uint8Array(buffer);
-      const first100Bytes = uint8Array.slice(0, Math.min(100, uint8Array.length));
-      
-      // Try to decode as ASCII to find LANGID
-      let langId = '';
-      try {
-        const asciiText = new TextDecoder('ascii').decode(first100Bytes);
-        const langIdMatch = asciiText.match(/LANGID=(\d+)/);
-        if (langIdMatch) {
-          langId = langIdMatch[1];
-        }
-      } catch {
-        // Couldn't extract LANGID, will use fallback
-      }
-      
-      // If we found a LANGID, use it to determine encoding
-      if (langId) {
-        const encoding = getEncodingByLangId(langId);
-        try {
-          const decoder = new TextDecoder(encoding);
-          resolve(decoder.decode(buffer));
-          return;
-        } catch {
-          // If the determined encoding fails, fall through to UTF-8
-        }
-      }
-      
-      // Fallback: try UTF-8 first (most universal)
-      try {
-        const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
-        resolve(utf8Decoder.decode(buffer));
-      } catch {
-        // Final fallback to Windows-1252 for Western European files
-        const win1252Decoder = new TextDecoder('windows-1252');
-        resolve(win1252Decoder.decode(buffer));
-      }
+
+      decodeAnsiText(buffer).then(text => resolve(parseIni(text)));
     };
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   });
 }
+
