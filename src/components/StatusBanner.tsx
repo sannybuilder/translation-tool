@@ -1,4 +1,6 @@
-import React from "react";
+import React from 'react';
+import Button from './ui/Button';
+import { colors, spacing, fontSize } from '../styles/theme';
 
 interface StatusBannerProps {
   error: string;
@@ -6,45 +8,48 @@ interface StatusBannerProps {
   onSwitchToLocal: () => void;
 }
 
-const StatusBanner: React.FC<StatusBannerProps> = ({ error, isUsingCache = false, onSwitchToLocal }) => {
+const StatusBanner: React.FC<StatusBannerProps> = ({ 
+  error, 
+  isUsingCache = false, 
+  onSwitchToLocal 
+}) => {
+  const styles = {
+    container: {
+      backgroundColor: isUsingCache ? colors.primaryLight : `${colors.warning}1a`,
+      color: isUsingCache ? colors.success : colors.warning,
+      padding: `${spacing.lg} ${spacing.xxl}`,
+      borderBottom: `1px solid ${isUsingCache ? colors.success : colors.warning}`,
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      flexWrap: 'wrap' as const,
+      gap: spacing.lg,
+    },
+    message: {
+      fontSize: fontSize.base,
+    },
+  };
+
   return (
-    <div
-      style={{
-        backgroundColor: isUsingCache ? "#4CAF501a" : "#ff98001a",
-        color: isUsingCache ? "#4CAF50" : "#ff9800",
-        padding: "1rem 2rem",
-        borderBottom: isUsingCache ? "1px solid #4CAF50" : "1px solid #ff9800",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: "1rem",
-      }}
-    >
-      <span>{error}</span>
+    <div style={styles.container}>
+      <span style={styles.message}>{error}</span>
       {!isUsingCache && (
-        <button
+        <Button
+          variant="primary"
+          size="small"
           onClick={onSwitchToLocal}
-          style={{
-            backgroundColor: "#ff9800",
-            color: "#000",
-            border: "none",
-            padding: "0.5rem 1rem",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "0.9rem",
-            fontWeight: "bold",
-            whiteSpace: "nowrap",
-          }}
           title="Switch to Local Mode"
+          customStyle={{
+            backgroundColor: colors.warning,
+            color: '#000',
+            fontWeight: 'bold',
+          }}
         >
           Switch to Local Mode
-        </button>
+        </Button>
       )}
     </div>
   );
 };
 
 export default StatusBanner;
-
-

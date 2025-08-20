@@ -1,14 +1,14 @@
-import React, { useEffect } from "react";
-
-type SourceMode = "github" | "local";
+import React, { useEffect } from 'react';
+import Button from './ui/Button';
+import { colors, spacing, fontSize, borderRadius, shadows } from '../styles/theme';
 
 interface ModeChangeDialogProps {
   visible: boolean;
-  currentMode: SourceMode;
-  pendingMode: SourceMode | null;
+  currentMode: 'github' | 'local';
+  pendingMode: 'github' | 'local' | null;
   onCancel: () => void;
   onConfirm: () => void;
-  hasChanges?: boolean;
+  hasChanges: boolean;
   pendingChangesCount?: number;
 }
 
@@ -18,169 +18,141 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
   pendingMode,
   onCancel,
   onConfirm,
-  hasChanges = false,
+  hasChanges,
   pendingChangesCount = 0,
 }) => {
   useEffect(() => {
-    if (!visible) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
-      else if (event.key === "Enter") onConfirm();
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!visible) return;
+      if (e.key === 'Escape') {
+        onCancel();
+      } else if (e.key === 'Enter') {
+        onConfirm();
+      }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
   }, [visible, onCancel, onConfirm]);
 
   if (!visible) return null;
 
-  const currentLabel = currentMode === "github" ? "GitHub" : "Local File";
-  const targetLabel = pendingMode === "github" ? "GitHub" : "Local File";
+  const styles = {
+    overlay: {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000,
+    },
+    dialog: {
+      backgroundColor: colors.bgSecondary,
+      borderRadius: borderRadius.xl,
+      padding: spacing.xxl,
+      maxWidth: '500px',
+      width: '90%',
+      boxShadow: shadows.xl,
+      border: `1px solid ${colors.borderPrimary}`,
+    },
+    title: {
+      margin: `0 0 ${spacing.lg} 0`,
+      fontSize: fontSize.xxxl,
+      color: colors.textPrimary,
+    },
+    content: {
+      margin: `0 0 ${spacing.lg} 0`,
+      fontSize: fontSize.lg,
+      color: colors.textLight,
+      lineHeight: 1.6,
+    },
+    warning: {
+      margin: `0 0 ${spacing.xl} 0`,
+      fontSize: fontSize.base,
+      color: colors.warning,
+      fontWeight: 'bold' as const,
+    },
+    hint: {
+      margin: `0 0 ${spacing.xl} 0`,
+      fontSize: fontSize.md,
+      color: colors.textMuted,
+      fontStyle: 'italic' as const,
+    },
+    kbd: {
+      padding: '0.1rem 0.3rem',
+      backgroundColor: colors.borderPrimary,
+      borderRadius: borderRadius.sm,
+    },
+    buttons: {
+      display: 'flex',
+      gap: spacing.lg,
+      justifyContent: 'flex-end',
+    },
+  };
+
+  const getTargetModeName = () => {
+    return pendingMode === 'github' ? 'GitHub' : 'Local Files';
+  };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.7)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1000,
-        padding: "1rem",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onCancel();
-        }
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "#1a1a1a",
-          border: "1px solid #444",
-          borderRadius: "8px",
-          padding: "2rem",
-          maxWidth: "500px",
-          width: "100%",
-          color: "#fff",
-        }}
-      >
-        <h3
-          style={{
-            margin: "0 0 1rem 0",
-            color: "#f44336",
-            fontSize: "1.2rem",
-          }}
-        >
-          ⚠️ Warning: Cache Will Be Deleted
-        </h3>
-
-        <p
-          style={{
-            margin: "0 0 1.5rem 0",
-            lineHeight: "1.6",
-            color: "#ccc",
-          }}
-        >
-          Switching from <strong>{currentLabel}</strong> mode to {" "}
-          <strong>{targetLabel}</strong> mode will delete your local editing cache (files are not uploaded anywhere).
-        </p>
+    <div style={styles.overlay}>
+      <div style={styles.dialog}>
+        <h2 style={styles.title}>Switch to {getTargetModeName()}?</h2>
         
-        <ul
-          style={{
-            margin: "0 0 1.5rem 0",
-            lineHeight: "1.6",
-            color: "#ccc",
-            paddingLeft: "1.5rem",
-          }}
-        >
-          {hasChanges && (
-            <li><strong>Unsaved edits</strong> in the current cache</li>
-          )}
-          {pendingChangesCount > 0 && (
-            <li><strong>{pendingChangesCount} pending changes</strong> waiting for review</li>
-          )}
-          <li>Your current <strong>local editing cache</strong></li>
-        </ul>
+        <p style={styles.content}>
+          You're switching from <strong>{currentMode === 'github' ? 'GitHub' : 'Local Files'}</strong> to{' '}
+          <strong>{getTargetModeName()}</strong>.
+        </p>
 
-        <p
-          style={{
-            margin: "0 0 1.5rem 0",
-            lineHeight: "1.6",
-            color: "#ccc",
-          }}
-        >
+        {pendingChangesCount > 0 && (
+          <p style={styles.warning}>
+            ⚠️ You have {pendingChangesCount} pending change{pendingChangesCount !== 1 ? 's' : ''} to review.
+          </p>
+        )}
+
+        {hasChanges && (
+          <p style={styles.warning}>
+            ⚠️ You have unsaved changes that will be lost.
+          </p>
+        )}
+
+        <p style={styles.content}>
+          Switching modes will <strong>permanently delete</strong> your current editing session, including:
+          • All unsaved edits
+          • Pending changes waiting for review
+          • Your current working files
+        </p>
+
+        <p style={styles.content}>
           Please download or copy your work or submit pending changes first, or confirm to delete the cache.
         </p>
 
-        <p
-          style={{
-            margin: "0 0 1.5rem 0",
-            fontSize: "0.85rem",
-            color: "#888",
-            fontStyle: "italic",
-          }}
-        >
-          Press <kbd style={{ padding: "0.1rem 0.3rem", backgroundColor: "#333", borderRadius: "3px" }}>ESC</kbd> to
-          cancel or {" "}
-          <kbd style={{ padding: "0.1rem 0.3rem", backgroundColor: "#333", borderRadius: "3px" }}>Enter</kbd> to
-          confirm.
+        <p style={styles.hint}>
+          Press <kbd style={styles.kbd}>ESC</kbd> to cancel or{' '}
+          <kbd style={styles.kbd}>Enter</kbd> to confirm.
         </p>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            justifyContent: "flex-end",
-          }}
-        >
-          <button
+        <div style={styles.buttons}>
+          <Button
+            variant="secondary"
+            size="medium"
             onClick={onCancel}
-            style={{
-              backgroundColor: "#2a2a2a",
-              color: "#fff",
-              border: "1px solid #444",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              transition: "all 0.3s ease",
-            }}
             title="Cancel and keep current changes"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#3a3a3a";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#2a2a2a";
-            }}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
+            size="medium"
             onClick={onConfirm}
-            style={{
-              backgroundColor: "#f44336",
-              color: "#fff",
-              border: "1px solid #f44336",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "4px",
-              cursor: "pointer",
-              fontSize: "0.9rem",
-              transition: "all 0.3s ease",
-            }}
-            title="Discard unsaved changes and switch mode"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#d32f2f";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#f44336";
-            }}
+            title="Switch mode and lose changes"
           >
-            Delete Cache
-          </button>
+            Switch Mode (Delete Cache)
+          </Button>
         </div>
       </div>
     </div>
@@ -188,5 +160,3 @@ const ModeChangeDialog: React.FC<ModeChangeDialogProps> = ({
 };
 
 export default ModeChangeDialog;
-
-

@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import sannyLogo from '../assets/sanny.png';
 import githubLogo from '../assets/github.svg';
 import discordLogo from '../assets/discord.svg';
- 
+import Button from './ui/Button';
+import { colors, spacing, fontSize, borderRadius } from '../styles/theme';
+import { useScreenSize } from '../hooks/useScreenSize';
+import { combineStyles } from '../styles/styles';
 
 type SourceMode = 'github' | 'local';
 type FilterMode = 'all' | 'untranslated' | 'invalid';
@@ -25,13 +28,10 @@ interface HeaderProps {
   isUsingCache?: boolean;
   suppressRandomize?: boolean;
   hideControls?: boolean;
-  screenSize?: 'mobile' | 'medium' | 'desktop';
   pendingChanges?: number;
   onReviewChangesClick?: () => void;
   hasActiveCache?: boolean;
 }
-
-import { useEffect, useRef } from 'react';
 
 const Header: React.FC<HeaderProps> = ({
   availableTranslations,
@@ -51,12 +51,11 @@ const Header: React.FC<HeaderProps> = ({
   isUsingCache = false,
   suppressRandomize = false,
   hideControls = false,
-  screenSize = 'desktop',
   pendingChanges = 0,
   onReviewChangesClick,
   hasActiveCache = false,
 }) => {
-  // Track whether we've already randomized once
+  const { isMobile } = useScreenSize();
   const didRandomizeRef = useRef(false);
 
   useEffect(() => {
@@ -70,27 +69,88 @@ const Header: React.FC<HeaderProps> = ({
     }
   }, [availableTranslations, suppressRandomize, selectedTranslation, onTranslationChange]);
 
-  const isMobile = screenSize === 'mobile';
+  const getProgressColor = (percent: number): string => {
+    if (percent === 100 && invalidKeys === 0) return colors.success;
+    if (percent >= 80) return '#8BC34A';
+    if (percent >= 60) return '#FFEB3B';
+    if (percent >= 40) return colors.warning;
+    if (percent >= 20) return '#FF5722';
+    return colors.error;
+  };
+
+  const progressPercent = totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0;
+
+  const headerStyles = {
+    container: {
+      background: colors.bgDark,
+      borderBottom: `1px solid ${colors.borderPrimary}`,
+      padding: '0 0 8px 0',
+    },
+    contentWidth: {
+      maxWidth: '1400px',
+      margin: '0 auto',
+      padding: `0 ${isMobile ? spacing.sm : spacing.lg}`,
+    },
+    topRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: isMobile ? '12px 8px 6px 0' : '16px 0px 8px 0',
+    },
+    logo: {
+      width: isMobile ? 32 : 40,
+      height: isMobile ? 32 : 40,
+      marginRight: isMobile ? 4 : 8,
+    },
+    title: {
+      color: colors.textPrimary,
+      fontSize: isMobile ? fontSize.lg : fontSize.xxl,
+      fontWeight: 700,
+      letterSpacing: isMobile ? 0 : 1,
+      display: 'flex',
+      alignItems: 'center',
+      flexWrap: 'wrap' as const,
+      gap: '0',
+    },
+    betaBadge: {
+      fontSize: isMobile ? '0.55rem' : '0.65rem',
+      fontWeight: 600,
+      color: colors.success,
+      backgroundColor: colors.primaryLight,
+      padding: isMobile ? '1px 4px' : '2px 6px',
+      borderRadius: borderRadius.md,
+      border: `1px solid rgba(76, 175, 80, 0.3)`,
+      letterSpacing: '0.5px',
+      marginLeft: isMobile ? '4px' : '8px',
+    },
+    controlsRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: isMobile ? 8 : 32,
+      padding: isMobile ? '2px 0' : '4px 0',
+      flexWrap: (isMobile && sourceMode === 'local' ? 'wrap' : 'nowrap') as 'wrap' | 'nowrap',
+    },
+    filterButton: {
+      background: 'transparent',
+      border: `1px solid ${colors.borderSecondary}`,
+      borderRadius: borderRadius.md,
+      padding: isMobile ? '3px 5px' : '4px 6px',
+      fontSize: isMobile ? fontSize.sm : fontSize.base,
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      flexWrap: 'wrap' as const,
+      overflow: 'hidden',
+    },
+  };
 
   return (
-    <header
-      id="app-header"
-      style={{
-        background: '#181818',
-        borderBottom: '1px solid #333',
-        padding: '0 0 8px 0',
-      }}
-    >
-      {/* Row 1: Logo, Name, Home, Github */}
-      <div className="content-width">
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: isMobile ? '12px 8px 6px 0' : '16px 0px 8px 0',
-          }}
-        >
+    <header id="app-header" style={headerStyles.container}>
+      <div className="content-width" style={headerStyles.contentWidth}>
+        <div style={headerStyles.topRow}>
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16 }}>
             <a
               href="https://sannybuilder.com"
@@ -99,116 +159,48 @@ const Header: React.FC<HeaderProps> = ({
               title="Sanny Builder homepage"
               aria-label="Sanny Builder homepage"
             >
-              <img src={sannyLogo} alt="Logo" style={{ width: isMobile ? 32 : 40, height: isMobile ? 32 : 40, marginRight: isMobile ? 4 : 8 }} />
+              <img src={sannyLogo} alt="Logo" style={headerStyles.logo} />
             </a>
-            <span
-              style={{
-                color: '#fff',
-                fontSize: isMobile ? '0.95rem' : '1.15rem',
-                fontWeight: 700,
-                letterSpacing: isMobile ? 0 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0',
-              }}
-            >
+            <span style={headerStyles.title}>
               <span>Translation</span>
               <span style={{ marginLeft: isMobile ? '4px' : '8px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
                 Tool
-                <span
-                  style={{
-                    fontSize: isMobile ? '0.55rem' : '0.65rem',
-                    fontWeight: 600,
-                    color: '#4CAF50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                    padding: isMobile ? '1px 4px' : '2px 6px',
-                    borderRadius: '4px',
-                    border: '1px solid rgba(76, 175, 80, 0.3)',
-                    letterSpacing: '0.5px',
-                    marginLeft: isMobile ? '4px' : '8px',
-                  }}
-                >
-                  BETA
-                </span>
+                <span style={headerStyles.betaBadge}>BETA</span>
               </span>
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12 }}>
-            <a
-              href="https://github.com/sannybuilder/translation-tool"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Button
+              variant="secondary"
+              size={isMobile ? 'small' : 'medium'}
+              icon={<img src={githubLogo} alt="GitHub" style={{ width: isMobile ? 20 : 24, height: isMobile ? 20 : 24 }} />}
+              onClick={() => window.open('https://github.com/sannybuilder/translation-tool', '_blank')}
               title="View source on GitHub"
               aria-label="View source on GitHub"
-              style={{
-                background: '#222',
-                border: 'none',
-                borderRadius: 6,
-                padding: isMobile ? '6px' : '8px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? 0 : 8,
-                color: '#fff',
-                fontWeight: 500,
-                fontSize: isMobile ? '0.9rem' : '1rem',
-                textDecoration: 'none',
-                boxShadow: '0 1px 4px #0002',
-              }}
             >
-              <img src={githubLogo} alt="GitHub" style={{ width: isMobile ? 20 : 24, height: isMobile ? 20 : 24 }} />
-              {!isMobile && <span className="icon-btn-text">GitHub</span>}
-            </a>
-            <a
-              href="https://sannybuilder.com/discord"
-              target="_blank"
-              rel="noopener noreferrer"
+              {!isMobile && 'GitHub'}
+            </Button>
+            <Button
+              variant="primary"
+              size={isMobile ? 'small' : 'medium'}
+              icon={<img src={discordLogo} alt="Discord" style={{ width: isMobile ? 20 : 24, height: isMobile ? 20 : 24 }} />}
+              onClick={() => window.open('https://sannybuilder.com/discord', '_blank')}
               title="Join our Discord"
               aria-label="Join our Discord"
-              style={{
-                background: '#5865F2',
-                border: 'none',
-                borderRadius: 6,
-                padding: isMobile ? '6px' : '8px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: isMobile ? 0 : 8,
-                color: '#fff',
-                fontWeight: 500,
-                fontSize: isMobile ? '0.9rem' : '1rem',
-                textDecoration: 'none',
-                boxShadow: '0 1px 4px #0002',
-              }}
+              customStyle={{ backgroundColor: colors.discord }}
             >
-              <img src={discordLogo} alt="Discord" style={{ width: isMobile ? 20 : 24, height: isMobile ? 20 : 24 }} />
-              {!isMobile && <span className="icon-btn-text">Discord</span>}
-            </a>
+              {!isMobile && 'Discord'}
+            </Button>
           </div>
         </div>
       </div>
 
       {!hideControls && (
-        <div className="content-width">
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              gap: isMobile ? 8 : 32,
-              padding: isMobile ? '2px 0' : '4px 0',
-              flexWrap: isMobile && sourceMode === 'local' ? 'wrap' : 'nowrap',
-            }}
-          >
+        <div className="content-width" style={headerStyles.contentWidth}>
+          <div style={headerStyles.controlsRow}>
             {/* Source Switch */}
             <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16 }}>
-              <span
-                style={{
-                  color: '#aaa',
-                  fontWeight: 500,
-                  fontSize: isMobile ? '0.85rem' : '1rem',
-                  marginRight: isMobile ? 4 : 8,
-                }}
-              >
+              <span style={{ color: colors.textSecondary, fontWeight: 500, fontSize: isMobile ? fontSize.md : fontSize.xl, marginRight: isMobile ? 4 : 8 }}>
                 {isMobile ? 'Src' : 'Source'}
               </span>
               {isMobile ? (
@@ -216,13 +208,13 @@ const Header: React.FC<HeaderProps> = ({
                   value={sourceMode}
                   onChange={(e) => onSourceModeChange(e.target.value as SourceMode)}
                   style={{
-                    background: '#222',
-                    color: '#fff',
-                    border: '1px solid #444',
-                    borderRadius: '4px',
+                    background: colors.github,
+                    color: colors.textPrimary,
+                    border: `1px solid ${colors.borderSecondary}`,
+                    borderRadius: borderRadius.md,
                     padding: isMobile ? '4px 8px' : '6px 12px',
                     fontWeight: 500,
-                    fontSize: isMobile ? '0.85rem' : '0.95rem',
+                    fontSize: isMobile ? fontSize.md : fontSize.lg,
                     cursor: 'pointer',
                     outline: 'none',
                   }}
@@ -232,58 +224,39 @@ const Header: React.FC<HeaderProps> = ({
                 </select>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <button
+                  <Button
+                    variant={sourceMode === 'github' ? 'primary' : 'secondary'}
+                    size="medium"
+                    onClick={() => onSourceModeChange('github')}
                     title="Use GitHub as source"
                     aria-pressed={sourceMode === 'github'}
-                    onClick={() => onSourceModeChange('github')}
-                    style={{
-                      background: sourceMode === 'github' ? '#4CAF50' : '#222',
-                      color: '#fff',
-                      border: '1px solid #444',
+                    customStyle={{
                       borderRadius: '4px 0 0 4px',
-                      padding: '6px 16px',
-                      fontWeight: 500,
-                      fontSize: '0.95rem',
-                      cursor: 'pointer',
-                      marginRight: 0,
+                      marginRight: -1,
                     }}
                   >
                     {isUsingCache ? 'GitHub (cached)' : 'GitHub'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant={sourceMode === 'local' ? 'primary' : 'secondary'}
+                    size="medium"
+                    onClick={() => onSourceModeChange('local')}
                     title="Use local files as source"
                     aria-pressed={sourceMode === 'local'}
-                    onClick={() => onSourceModeChange('local')}
-                    style={{
-                      background: sourceMode === 'local' ? '#4CAF50' : '#222',
-                      color: '#fff',
-                      border: '1px solid #444',
+                    customStyle={{
                       borderRadius: '0 4px 4px 0',
-                      padding: '6px 16px',
-                      fontWeight: 500,
-                      fontSize: '0.95rem',
-                      cursor: 'pointer',
-                      marginLeft: -1,
                     }}
                   >
-                    {'Local'}
-                  </button>
+                    Local
+                  </Button>
                 </div>
               )}
             </div>
+
             {/* Language selector or upload buttons */}
             {sourceMode === 'github' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 12 }}>
-                <label
-                  htmlFor="language-selector"
-                  className="language-label"
-                  style={{
-                    color: '#aaa',
-                    fontWeight: 500,
-                    fontSize: isMobile ? '0.85rem' : '1rem',
-                    marginRight: isMobile ? 4 : 8,
-                  }}
-                >
+                <label htmlFor="language-selector" style={{ color: colors.textSecondary, fontWeight: 500, fontSize: isMobile ? fontSize.md : fontSize.xl, marginRight: isMobile ? 4 : 8 }}>
                   {isMobile ? 'Lang:' : 'Language:'}
                 </label>
                 <select
@@ -293,12 +266,12 @@ const Header: React.FC<HeaderProps> = ({
                   value={selectedTranslation}
                   onChange={(e) => onTranslationChange(e.target.value)}
                   style={{
-                    background: '#222',
-                    color: '#fff',
-                    border: '1px solid #444',
-                    borderRadius: 6,
+                    background: colors.github,
+                    color: colors.textPrimary,
+                    border: `1px solid ${colors.borderSecondary}`,
+                    borderRadius: borderRadius.lg,
                     padding: isMobile ? '4px 8px' : '8px 16px',
-                    fontSize: isMobile ? '0.85rem' : '1rem',
+                    fontSize: isMobile ? fontSize.md : fontSize.xl,
                     fontWeight: 500,
                     minWidth: isMobile ? 80 : 120,
                   }}
@@ -316,31 +289,19 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flex: isMobile ? 1 : 'initial' }}>
-                <label
-                  style={{
-                    color: '#aaa',
-                    fontWeight: 500,
-                    fontSize: isMobile ? '0.85rem' : '1rem',
-                  }}
-                >
+                <label style={{ color: colors.textSecondary, fontWeight: 500, fontSize: isMobile ? fontSize.md : fontSize.xl }}>
                   {isMobile ? 'EN:' : 'English (Base):'}
                 </label>
-                <input
-                  type="file"
-                  accept=".ini"
-                  onChange={onEnglishFileUpload}
-                  style={{ display: 'none' }}
-                  id="english-file-input"
-                />
+                <input type="file" accept=".ini" onChange={onEnglishFileUpload} style={{ display: 'none' }} id="english-file-input" />
                 <label
                   htmlFor="english-file-input"
                   style={{
-                    background: '#222',
-                    color: '#fff',
-                    border: '1px solid #444',
-                    borderRadius: 6,
+                    background: colors.github,
+                    color: colors.textPrimary,
+                    border: `1px solid ${colors.borderSecondary}`,
+                    borderRadius: borderRadius.lg,
                     padding: isMobile ? '4px 8px' : '8px 16px',
-                    fontSize: isMobile ? '0.85rem' : '1rem',
+                    fontSize: isMobile ? fontSize.md : fontSize.xl,
                     fontWeight: 500,
                     cursor: 'pointer',
                     minWidth: isMobile ? 70 : 120,
@@ -353,31 +314,19 @@ const Header: React.FC<HeaderProps> = ({
                   {isMobile && localEnglishFileName ? '✓' + localEnglishFileName.substring(0, 8) : (localEnglishFileName || 'Choose File')}
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flex: isMobile ? 1 : 'initial' }}>
-                  <label
-                    style={{
-                      color: '#aaa',
-                      fontWeight: 500,
-                      fontSize: isMobile ? '0.85rem' : '1rem',
-                    }}
-                  >
+                  <label style={{ color: colors.textSecondary, fontWeight: 500, fontSize: isMobile ? fontSize.md : fontSize.xl }}>
                     {isMobile ? 'TR:' : 'Translation:'}
                   </label>
-                  <input
-                    type="file"
-                    accept=".ini"
-                    onChange={onTranslationFileUpload}
-                    style={{ display: 'none' }}
-                    id="translation-file-input"
-                  />
+                  <input type="file" accept=".ini" onChange={onTranslationFileUpload} style={{ display: 'none' }} id="translation-file-input" />
                   <label
                     htmlFor="translation-file-input"
                     style={{
-                      background: '#222',
-                      color: '#fff',
-                      border: '1px solid #444',
-                      borderRadius: 6,
+                      background: colors.github,
+                      color: colors.textPrimary,
+                      border: `1px solid ${colors.borderSecondary}`,
+                      borderRadius: borderRadius.lg,
                       padding: isMobile ? '4px 8px' : '8px 16px',
-                      fontSize: isMobile ? '0.85rem' : '1rem',
+                      fontSize: isMobile ? fontSize.md : fontSize.xl,
                       fontWeight: 500,
                       cursor: 'pointer',
                       minWidth: isMobile ? 70 : 120,
@@ -396,237 +345,87 @@ const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Row 3: Filters left, Review Changes right */}
+      {/* Filters and Progress */}
       {!hideControls && selectedTranslation && (
-        <div className="content-width">
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '4px 0 0',
-              marginTop: 2,
-            }}
-          >
-            {/* Filters and Desktop Progress */}
+        <div className="content-width" style={headerStyles.contentWidth}>
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 0', marginTop: 2 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8 }}>
+              {/* Filter Buttons */}
               <button
                 className="filter-btn"
                 onClick={() => onFilterChange && onFilterChange('all')}
-                style={{
-                  background: filterMode === 'all' ? '#222' : 'transparent',
-                  color: '#fff',
-                  border: filterMode === 'all' ? '1px solid #fff' : '1px solid #444',
-                  borderRadius: 4,
-                  padding: isMobile ? '3px 5px' : '4px 6px',
-                  fontSize: isMobile ? '0.8rem' : '0.9rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  flexWrap: 'wrap',
-                  overflow: 'hidden',
-                }}
+                style={combineStyles(
+                  headerStyles.filterButton,
+                  filterMode === 'all' ? { background: colors.github, border: `1px solid ${colors.textPrimary}` } : {}
+                )}
               >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'normal',
-                    color: '#fff',
-                    flex: '0 1 auto',
-                    minWidth: 0,
-                    textAlign: 'center',
-                  }}
-                >
-                  {!isMobile && 'All'}
-                </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    flex: '0 0 auto',
-                    fontSize: isMobile ? '0.8rem' : '0.9rem',
-                  }}
-                >
-                  {isMobile ? totalKeys : `(${totalKeys})`}
-                </span>
+                <span style={{ color: colors.textPrimary }}>{!isMobile && 'All'}</span>
+                <span style={{ fontWeight: 700, color: colors.textPrimary }}>{isMobile ? totalKeys : `(${totalKeys})`}</span>
               </button>
               <button
                 className="filter-btn"
                 onClick={() => onFilterChange && onFilterChange('untranslated')}
                 title={`Untranslated (${untranslatedKeys})`}
-                style={{
-                  background: filterMode === 'untranslated' ? '#222' : 'transparent',
-                  color: '#ff9800',
-                  border: filterMode === 'untranslated' ? '1px solid #ff9800' : '1px solid #444',
-                  borderRadius: 4,
-                  padding: isMobile ? '3px 5px' : '4px 6px',
-                  fontSize: isMobile ? '0.8rem' : '0.9rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  flexWrap: 'wrap',
-                  overflow: 'hidden',
-                }}
+                style={combineStyles(
+                  headerStyles.filterButton,
+                  { color: colors.warning },
+                  filterMode === 'untranslated' ? { background: colors.github, border: `1px solid ${colors.warning}` } : {}
+                )}
               >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'normal',
-                    color: '#ff9800',
-                    flex: '0 1 auto',
-                    minWidth: 0,
-                    textAlign: 'center',
-                  }}
-                >
-                  {isMobile ? '🔍' : 'Untranslated'}
-                </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    flex: '0 0 auto',
-                    color: '#ff9800',
-                    fontSize: isMobile ? '0.8rem' : '0.9rem',
-                  }}
-                >
-                  {isMobile ? untranslatedKeys : `(${untranslatedKeys})`}
-                </span>
+                <span>{isMobile ? '🔍' : 'Untranslated'}</span>
+                <span style={{ fontWeight: 700 }}>{isMobile ? untranslatedKeys : `(${untranslatedKeys})`}</span>
               </button>
               <button
                 className="filter-btn"
                 onClick={() => onFilterChange && onFilterChange('invalid')}
                 title={`Invalid (${invalidKeys})`}
-                style={{
-                  background: filterMode === 'invalid' ? '#222' : 'transparent',
-                  color: '#ff4444',
-                  border: filterMode === 'invalid' ? '1px solid #ff4444' : '1px solid #444',
-                  borderRadius: 4,
-                  padding: isMobile ? '3px 5px' : '4px 6px',
-                  fontSize: isMobile ? '0.8rem' : '0.9rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                  flexWrap: 'wrap',
-                  overflow: 'hidden',
-                }}
+                style={combineStyles(
+                  headerStyles.filterButton,
+                  { color: colors.error },
+                  filterMode === 'invalid' ? { background: colors.github, border: `1px solid ${colors.error}` } : {}
+                )}
               >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'normal',
-                    color: '#ff4444',
-                    flex: '0 1 auto',
-                    minWidth: 0,
-                    textAlign: 'center',
-                  }}
-                >
-                  {isMobile ? '⚠️' : 'Invalid'}
-                </span>
-                <span
-                  style={{
-                    fontWeight: 700,
-                    whiteSpace: 'nowrap',
-                    flex: '0 0 auto',
-                    color: '#ff4444',
-                    fontSize: isMobile ? '0.8rem' : '0.9rem',
-                  }}
-                >
-                  {isMobile ? invalidKeys : `(${invalidKeys})`}
-                </span>
+                <span>{isMobile ? '⚠️' : 'Invalid'}</span>
+                <span style={{ fontWeight: 700 }}>{isMobile ? invalidKeys : `(${invalidKeys})`}</span>
               </button>
-              {/* Progress display for all screen sizes */}
-              <span
-                className="progress-label"
-                style={{
-                  color: '#aaa',
-                  fontWeight: 500,
-                  fontSize: isMobile ? '0.85rem' : '1rem',
-                  marginLeft: isMobile ? 8 : 12,
-                }}
-              >
+
+              {/* Progress display */}
+              <span style={{ color: colors.textSecondary, fontWeight: 500, fontSize: isMobile ? fontSize.md : fontSize.xl, marginLeft: isMobile ? 8 : 12 }}>
                 {!isMobile && 'Progress:'}{' '}
-                <span
-                  style={{
-                    color: (() => {
-                      const progressPercent = totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0;
-                      if (progressPercent === 100 && invalidKeys === 0) return '#4CAF50'; // Green for complete
-                      if (progressPercent >= 80) return '#8BC34A'; // Light green for 80%+
-                      if (progressPercent >= 60) return '#FFEB3B'; // Yellow for 60%+
-                      if (progressPercent >= 40) return '#FF9800'; // Orange for 40%+
-                      if (progressPercent >= 20) return '#FF5722'; // Deep orange for 20%+
-                      return '#F44336'; // Red for < 20%
-                    })(),
-                    fontWeight: 700,
-                    fontSize: isMobile ? '0.85rem' : 'inherit',
-                  }}
-                >
-                  {totalKeys > 0 ? Math.round(((totalKeys - untranslatedKeys) / totalKeys) * 100) : 0}%
+                <span style={{ color: getProgressColor(progressPercent), fontWeight: 700, fontSize: isMobile ? fontSize.md : 'inherit' }}>
+                  {progressPercent}%
                 </span>
               </span>
             </div>
-            
+
             {/* Review Changes Button */}
             {hasActiveCache && onReviewChangesClick && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: isMobile ? '4px' : '12px',
-                }}
+              <Button
+                variant="primary"
+                size={isMobile ? 'small' : 'medium'}
+                onClick={onReviewChangesClick}
+                data-testid="review-changes-btn"
+                title={pendingChanges > 0 ? `Review ${pendingChanges} pending changes` : 'Review changes and download full file'}
               >
-                <button
-                  onClick={onReviewChangesClick}
-                  className="review-changes-btn"
-                  data-testid="review-changes-btn"
-                  title={pendingChanges > 0 ? `Review ${pendingChanges} pending changes` : 'Review changes and download full file'}
-                  style={{
-                    background: '#4CAF50',
-                    color: '#fff',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: isMobile ? '4px 8px' : '8px 16px',
-                    borderRadius: '4px',
-                    fontSize: isMobile ? '0.8rem' : '0.9rem',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobile ? '4px' : '8px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  {isMobile ? 'Review' : 'Review Changes'}
-                  
-                    <span
-                      style={{
-                        backgroundColor: '#fff',
-                        color: '#4CAF50',
-                        borderRadius: '12px',
-                        padding: isMobile ? '1px 6px' : '2px 8px',
-                        fontSize: isMobile ? '0.75rem' : '0.85rem',
-                        fontWeight: 'bold',
-                        minWidth: isMobile ? '20px' : '24px',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {pendingChanges}
-                    </span>
-                 
-                </button>
-              </div>
+                {isMobile ? 'Review' : 'Review Changes'}
+                {pendingChanges > 0 && (
+                  <span
+                    style={{
+                      backgroundColor: colors.textPrimary,
+                      color: colors.primary,
+                      borderRadius: '12px',
+                      padding: isMobile ? '1px 6px' : '2px 8px',
+                      fontSize: isMobile ? fontSize.xs : fontSize.md,
+                      fontWeight: 'bold',
+                      minWidth: isMobile ? '20px' : '24px',
+                      textAlign: 'center',
+                      marginLeft: isMobile ? '4px' : '8px',
+                    }}
+                  >
+                    {pendingChanges}
+                  </span>
+                )}
+              </Button>
             )}
           </div>
         </div>

@@ -732,8 +732,6 @@ function App() {
           localEnglishFileName={localEnglishFileName}
           onEnglishFileUpload={handleEnglishFileUpload}
           onTranslationFileUpload={handleTranslationFileUpload}
-          
-          screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
           pendingChanges={changeTracker?.getStats().pending || 0}
           onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
           hasActiveCache={hasEditingCache()}
@@ -768,7 +766,6 @@ function App() {
         onTranslationFileUpload={handleTranslationFileUpload}
         isUsingCache={isUsingCache}
         hideControls={false}
-        screenSize={screenSize as 'mobile' | 'medium' | 'desktop'}
         pendingChanges={changeTracker?.getStats().pending || 0}
         onReviewChangesClick={() => setIsPartialUpdatePanelOpen(true)}
         hasActiveCache={hasEditingCache()}
@@ -787,7 +784,7 @@ function App() {
       <main
         style={{
           padding: isMobile ? '1rem' : isMedium ? '1.5rem' : '2rem',
-          maxWidth: isMedium ? '900px' : '1200px',
+          maxWidth: isMedium ? '900px' : '1280px',
           margin: '0 auto',
         }}
       >
