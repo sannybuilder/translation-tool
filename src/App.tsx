@@ -808,6 +808,8 @@ function App() {
         <ChangeReview
           changeTracker={changeTracker}
           selectedTranslation={selectedTranslation}
+          sourceMode={sourceMode}
+          localFileName={localFileName}
           refreshTrigger={changeTrackerUpdateTrigger}
           isOpen={isPartialUpdatePanelOpen}
           onClose={() => setIsPartialUpdatePanelOpen(false)}

@@ -5,6 +5,8 @@ import type { TrackedChange } from '../types/changeTracking';
 interface ChangeReviewProps {
   changeTracker: ChangeTracker | null;
   selectedTranslation: string;
+  sourceMode: 'github' | 'local';
+  localFileName?: string;
   refreshTrigger?: number; // trigger re-compute
   isOpen: boolean;
   onClose: () => void;
@@ -16,6 +18,8 @@ interface ChangeReviewProps {
 const ChangeReview: React.FC<ChangeReviewProps> = ({
   changeTracker,
   selectedTranslation,
+  sourceMode,
+  localFileName,
   refreshTrigger,
   isOpen,
   onClose,
@@ -506,7 +510,7 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                 e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              Download {selectedTranslation}
+              Download {sourceMode === 'github' ? selectedTranslation : localFileName || 'translation.ini'}
             </button>
           </div>
         </div>

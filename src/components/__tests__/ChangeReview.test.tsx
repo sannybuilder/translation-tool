@@ -30,6 +30,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -53,6 +55,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
         onUndo={onUndo}
@@ -77,6 +81,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
         onUndo={onUndo}
@@ -95,6 +101,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -116,6 +124,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -136,6 +146,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -160,6 +172,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
         onUndo={onUndo}
@@ -181,6 +195,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -211,6 +227,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -249,6 +267,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -278,6 +298,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
       />
@@ -305,6 +327,8 @@ describe.sequential('ChangeReview submit count behavior', () => {
       <ChangeReview
         changeTracker={changeTracker}
         selectedTranslation="de.ini"
+        sourceMode="github"
+        localFileName="de.ini"
         isOpen={true}
         onClose={() => {}}
         onDownloadFullFile={onDownloadFullFile}
@@ -312,6 +336,57 @@ describe.sequential('ChangeReview submit count behavior', () => {
     );
     fireEvent.click(screen.getAllByRole('button', { name: /Download de\.ini/i })[0]);
     expect(onDownloadFullFile).toHaveBeenCalled();
+  });
+
+  it('shows correct download button text for local mode', () => {
+    const changeTracker = makeTrackerWithTwoChanges();
+    render(
+      <ChangeReview
+        changeTracker={changeTracker}
+        selectedTranslation="de.ini"
+        sourceMode="local"
+        localFileName="french.ini"
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    
+    // Should show local file name when in local mode
+    expect(screen.getByRole('button', { name: /Download french\.ini/i })).toBeTruthy();
+  });
+
+  it('shows correct download button text for local mode with fallback', () => {
+    const changeTracker = makeTrackerWithTwoChanges();
+    render(
+      <ChangeReview
+        changeTracker={changeTracker}
+        selectedTranslation="de.ini"
+        sourceMode="local"
+        localFileName=""
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    
+    // Should show fallback name when localFileName is empty
+    expect(screen.getByRole('button', { name: /Download translation\.ini/i })).toBeTruthy();
+  });
+
+  it('shows correct download button text for local mode with undefined localFileName', () => {
+    const changeTracker = makeTrackerWithTwoChanges();
+    render(
+      <ChangeReview
+        changeTracker={changeTracker}
+        selectedTranslation="de.ini"
+        sourceMode="local"
+        localFileName={undefined}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    
+    // Should show fallback name when localFileName is undefined
+    expect(screen.getByRole('button', { name: /Download translation\.ini/i })).toBeTruthy();
   });
 });
 
