@@ -29,6 +29,8 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
 }) => {
   const [unsubmittedChanges, setUnsubmittedChanges] = useState<TrackedChange[]>([]);
   const [selectedChanges, setSelectedChanges] = useState<Set<string>>(new Set());
+  const [isExplanationDismissed, setIsExplanationDismissed] = useState(false);
+  const [showExplanationPopup, setShowExplanationPopup] = useState(false);
 
   const [stats, setStats] = useState({ total: 0, submitted: 0, pending: 0, sections: 0 });
 
@@ -188,13 +190,77 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
              <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
                       </div>
 
-                                           {/* Instructions - only show when there are active changes */}
-            {stats.pending > 0 && (
-              <div style={{ padding: isMobile ? '0.75rem' : '1rem', backgroundColor: '#1f1f1f', borderBottom: '1px solid #333' }}>
-                <div style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: '#aaa', lineHeight: '1.4' }}>
+                                           {/* Instructions - only show when there are active changes and not dismissed */}
+            {stats.pending > 0 && !isExplanationDismissed && (
+              <div style={{ padding: isMobile ? '0.75rem' : '1rem', backgroundColor: '#1f1f1f', borderBottom: '1px solid #333', position: 'relative' }}>
+                <button
+                  onClick={() => setIsExplanationDismissed(true)}
+                  style={{
+                    position: 'absolute',
+                    top: '0.5rem',
+                    right: '0.5rem',
+                    background: 'none',
+                    border: 'none',
+                    color: '#666',
+                    fontSize: '1.2rem',
+                    cursor: 'pointer',
+                    padding: '0',
+                    lineHeight: '1',
+                    width: '20px',
+                    height: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Dismiss explanation"
+                >
+                  ×
+                </button>
+                <div style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', color: '#aaa', lineHeight: '1.4', paddingRight: '2rem' }}>
                   <strong>What does Accept do?</strong><br/>
                   When you <strong>Accept</strong> a change, it keeps the new value in your file but removes it from this review panel. You can always download the translation file with all accepted changes.
                 </div>
+              </div>
+            )}
+
+            {/* Popup explanation when clicking the help button */}
+            {showExplanationPopup && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '120px',
+                  right: isMobile ? '10px' : '20px',
+                  width: '250px',
+                  padding: '0.75rem',
+                  backgroundColor: '#2a2a2a',
+                  border: '1px solid #444',
+                  borderRadius: '4px',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+                  zIndex: 1000,
+                  fontSize: isMobile ? '0.8rem' : '0.85rem',
+                  color: '#aaa',
+                  lineHeight: '1.4'
+                }}
+              >
+                <button
+                  onClick={() => setShowExplanationPopup(false)}
+                  style={{
+                    position: 'absolute',
+                    top: '0.25rem',
+                    right: '0.25rem',
+                    background: 'none',
+                    border: 'none',
+                    color: '#666',
+                    fontSize: '1rem',
+                    cursor: 'pointer',
+                    padding: '0',
+                    lineHeight: '1'
+                  }}
+                >
+                  ×
+                </button>
+                <strong>What does Accept do?</strong><br/>
+                When you <strong>Accept</strong> a change, it keeps the new value in your file but removes it from this review panel. You can always download the translation file with all accepted changes.
               </div>
             )}
 
@@ -204,7 +270,32 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                 {selectedChanges.size === unsubmittedChanges.length ? (isMobile ? 'Deselect' : 'Deselect All') : (isMobile ? 'Select' : 'Select All')}
               </button>
               <button onClick={handleUndoAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#2a2a2a', color: '#bbb', border: '1px solid #555', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }} title="Undo all changes">Undo All</button>
-              <button onClick={handleAcceptAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#4CAF50', color: '#fff', border: '1px solid #4CAF50', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }} title="Accept all changes">Accept All</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <button onClick={handleAcceptAll} style={{ padding: isMobile ? '0.4rem 0.6rem' : '0.25rem 0.75rem', backgroundColor: '#4CAF50', color: '#fff', border: '1px solid #4CAF50', borderRadius: '4px', fontSize: isMobile ? '0.8rem' : '0.85rem', cursor: 'pointer' }} title="Accept all changes">Accept All</button>
+                {isExplanationDismissed && (
+                  <button
+                    onClick={() => setShowExplanationPopup(!showExplanationPopup)}
+                    style={{
+                      padding: '0',
+                      width: '24px',
+                      height: '24px',
+                      backgroundColor: '#2a2a2a',
+                      color: '#888',
+                      border: '1px solid #555',
+                      borderRadius: '50%',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold'
+                    }}
+                    title="What does Accept do?"
+                  >
+                    ?
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -320,7 +411,8 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                     disabled={selectedChanges.size === 0}
                     style={{ 
                       flex: 1,
-                      aspectRatio: '1',
+                      aspectRatio: isMobile ? 'auto' : '1',
+                      height: isMobile ? '60px' : 'auto',
                       padding: isMobile ? '0.5rem' : '0.75rem',
                       backgroundColor: selectedChanges.size > 0 ? '#1565C0' : '#333',
                       color: 'white',
@@ -329,10 +421,10 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                       fontSize: isMobile ? '0.8rem' : '0.9rem',
                       cursor: selectedChanges.size > 0 ? 'pointer' : 'not-allowed',
                       display: 'flex',
-                      flexDirection: 'column',
+                      flexDirection: isMobile ? 'row' : 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '0.25rem',
+                      gap: isMobile ? '0.25rem' : '0.25rem',
                       transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={(e) => {
@@ -355,7 +447,7 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                       <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                     </svg>
                     <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
-                      {isMobile ? 'Copy' : 'Copy To Clipboard'}
+                       Copy To Clipboard
                     </span>
                   </button>
 
@@ -377,7 +469,8 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                     disabled={selectedChanges.size === 0}
                     style={{ 
                       flex: 1,
-                      aspectRatio: '1',
+                      aspectRatio: isMobile ? 'auto' : '1',
+                      height: isMobile ? '60px' : 'auto',
                       padding: isMobile ? '0.5rem' : '0.75rem',
                       backgroundColor: selectedChanges.size > 0 ? '#E65100' : '#333',
                       color: 'white',
@@ -386,10 +479,10 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                       fontSize: isMobile ? '0.8rem' : '0.9rem',
                       cursor: selectedChanges.size > 0 ? 'pointer' : 'not-allowed',
                       display: 'flex',
-                      flexDirection: 'column',
+                      flexDirection: isMobile ? 'row' : 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '0.25rem',
+                      gap: isMobile ? '0.25rem' : '0.25rem',
                       transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={(e) => {
@@ -412,7 +505,7 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                       <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                     </svg>
                     <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
-                      {isMobile ? 'Patch' : 'Download Patch'}
+                      Download Patch
                     </span>
                   </button>
 
@@ -429,7 +522,8 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                     disabled={selectedChanges.size === 0}
                     style={{ 
                       flex: 1,
-                      aspectRatio: '1',
+                      aspectRatio: isMobile ? 'auto' : '1',
+                      height: isMobile ? '60px' : 'auto',
                       padding: isMobile ? '0.5rem' : '0.75rem',
                       backgroundColor: selectedChanges.size > 0 ? '#9C27B0' : '#333',
                       color: 'white',
@@ -438,10 +532,10 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                       fontSize: isMobile ? '0.8rem' : '0.9rem',
                       cursor: selectedChanges.size > 0 ? 'pointer' : 'not-allowed',
                       display: 'flex',
-                      flexDirection: 'column',
+                      flexDirection: isMobile ? 'row' : 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '0.25rem',
+                      gap: isMobile ? '0.25rem' : '0.25rem',
                       transition: 'all 0.3s ease'
                     }}
                     onMouseEnter={(e) => {
@@ -464,7 +558,7 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                     </svg>
                     <span style={{ fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
-                      {isMobile ? 'Issue' : 'Create GitHub Issue'}
+                      Create GitHub Issue
                     </span>
                   </button>
                 </div>
