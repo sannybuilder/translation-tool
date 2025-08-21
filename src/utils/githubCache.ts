@@ -24,22 +24,26 @@ export interface GitHubFile {
   type: string;
 }
 
+// In-memory cache storage - persists only within current session
+const memoryCache = new Map<string, CacheEntry<any>>();
+
 // Helper function to get cache key
 const getCacheKey = (key: string): string => `${CACHE_PREFIX}${key}`;
 
-// Get data from cache
+// Get data from cache (now from memory instead of localStorage)
 export function getCachedData<T>(key: string): T | null {
   try {
-    const cached = localStorage.getItem(getCacheKey(key));
-    if (!cached) return null;
+    const cacheKey = getCacheKey(key);
+    const entry = memoryCache.get(cacheKey);
     
-    const entry: CacheEntry<T> = JSON.parse(cached);
-    return entry.data;
+    if (!entry) return null;
+    
+    return entry.data as T;
   } catch (error) {
     console.error('Error reading from cache:', error);
     // If there's an error reading cache, clear it
     try {
-      localStorage.removeItem(getCacheKey(key));
+      memoryCache.delete(getCacheKey(key));
     } catch {
       // Ignore errors when clearing cache
     }
@@ -47,18 +51,17 @@ export function getCachedData<T>(key: string): T | null {
   }
 }
 
-// Set data in cache
+// Set data in cache (now in memory instead of localStorage)
 export function setCachedData<T>(key: string, data: T): void {
   try {
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now()
     };
-    localStorage.setItem(getCacheKey(key), JSON.stringify(entry));
+    memoryCache.set(getCacheKey(key), entry);
   } catch (error) {
     console.error('Error writing to cache:', error);
-    // If localStorage is full, we can't do much about it
-    // Just log the error and continue
+    // Continue even if there's an error
   }
 }
 
