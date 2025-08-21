@@ -118,6 +118,7 @@ const TranslationRow = forwardRef<HTMLTextAreaElement, TranslationRowProps>(
             ref={englishTextRef}
             value={entry.englishText}
             readOnly
+            tabIndex={-1}
             style={{ ...styles.textArea, ...styles.englishTextArea }}
             placeholder="English (Base)"
           />

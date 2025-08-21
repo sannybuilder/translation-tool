@@ -416,7 +416,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                   minWidth: '200px',
                 }}
               >
-                <span style={{ fontSize: '1.5rem' }}>✨</span>
+                <span style={{ fontSize: '1.5rem' }}>🆕</span>
                 <span>Create New Translation</span>
                 <span style={{ fontSize: '0.8rem', color: '#aaa' }}>New language.ini file</span>
               </button>
@@ -453,7 +453,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 }}
               >
                 <span style={{ fontSize: '1.5rem' }}>
-                  {localFileName ? '✅' : '🌍'}
+                  {localFileName ? '✅' : '📄'}
                 </span>
                 <span>{localFileName ? 'Translation File' : 'Open Local File'}</span>
                 <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
