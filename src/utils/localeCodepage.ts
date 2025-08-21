@@ -1,6 +1,7 @@
 import lcidLib from 'lcid';
 
-// Windows locale to ANSI codepage mapping
+// Windows locale to encoding mapping
+// Supports both ANSI codepages and UTF-8 for languages that require it
 // Based on official Windows locale/codepage assignments
 // Reference: https://docs.microsoft.com/en-us/windows/win32/intl/code-page-identifiers
 const LOCALE_TO_CODEPAGE: Record<string, string> = {
@@ -51,7 +52,7 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
   'tg': 'windows-1251',    // Tajik
   'uz': 'windows-1251',    // Uzbek (Cyrillic)
   'az': 'windows-1251',    // Azerbaijani (Cyrillic)
-  'hy': 'windows-1251',    // Armenian
+  'hy': 'utf-8',           // Armenian (has its own script, requires UTF-8)
   
   // Greek (CP1253)
   'el': 'windows-1253',
@@ -95,22 +96,22 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
   'zh_HK': 'big5',         // Hong Kong
   'zh_MO': 'big5',         // Macau
   
-  // Indian Scripts (UTF-8 fallback to windows-1252 for Windows compatibility)
-  'hi': 'windows-1252',    // Hindi
-  'bn': 'windows-1252',    // Bengali
-  'gu': 'windows-1252',    // Gujarati
-  'kn': 'windows-1252',    // Kannada
-  'ml': 'windows-1252',    // Malayalam
-  'mr': 'windows-1252',    // Marathi
-  'ne': 'windows-1252',    // Nepali
-  'pa': 'windows-1252',    // Punjabi
-  'si': 'windows-1252',    // Sinhala
-  'ta': 'windows-1252',    // Tamil
-  'te': 'windows-1252',    // Telugu
-  'ur': 'windows-1252',    // Urdu
+  // Indian Scripts (UTF-8 for proper script support)
+  'hi': 'utf-8',           // Hindi (Devanagari script)
+  'bn': 'utf-8',           // Bengali (Bengali script)
+  'gu': 'utf-8',           // Gujarati (Gujarati script)
+  'kn': 'utf-8',           // Kannada (Kannada script)
+  'ml': 'utf-8',           // Malayalam (Malayalam script)
+  'mr': 'utf-8',           // Marathi (Devanagari script)
+  'ne': 'utf-8',           // Nepali (Devanagari script)
+  'pa': 'utf-8',           // Punjabi (Gurmukhi script)
+  'si': 'utf-8',           // Sinhala (Sinhala script)
+  'ta': 'utf-8',           // Tamil (Tamil script)
+  'te': 'utf-8',           // Telugu (Telugu script)
+  'ur': 'utf-8',           // Urdu (Perso-Arabic script)
   
   // Other Important Languages
-  'ka': 'windows-1252',    // Georgian (fallback to windows-1252)
+  'ka': 'utf-8',           // Georgian (has its own script, requires UTF-8)
   'am': 'windows-1252',    // Amharic (fallback to windows-1252)
   'my': 'windows-1252',    // Burmese (fallback to windows-1252)
   'km': 'windows-1252',    // Khmer (fallback to windows-1252)
@@ -119,7 +120,7 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
 };
 
 /**
- * Get the Windows ANSI codepage encoding for a given LCID (Language Code ID)
+ * Get the encoding for a given LCID (Language Code ID)
  * @param lcid The Windows Language Code ID
  * @returns The encoding name compatible with iconv-lite, or null if not found
  */

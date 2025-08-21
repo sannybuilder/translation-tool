@@ -557,14 +557,14 @@ function App() {
     const langId = translationData['']?.['LANGID'];
     
     if (!langId) {
-      setError('Cannot save: No LANGID found in file. LANGID is required to determine proper ANSI encoding.');
+      setError('Cannot save: No LANGID found in file. LANGID is required to determine proper encoding.');
       return;
     }
 
     const encoding = getEncodingByLangId(langId);
     
     if (!encoding) {
-      setError(`Cannot save: Unknown LANGID ${langId}. Unable to determine proper ANSI encoding.`);
+      setError(`Cannot save: Unknown LANGID ${langId}. Unable to determine proper encoding.`);
       return;
     }
 

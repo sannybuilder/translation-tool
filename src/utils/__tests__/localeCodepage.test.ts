@@ -30,7 +30,7 @@ describe('Locale Codepage Mapping', () => {
       expect(getEncodingForLcid(1058)).toBe('windows-1251'); // uk_UA
       expect(getEncodingForLcid(1059)).toBe('windows-1251'); // be_BY
       expect(getEncodingForLcid(1026)).toBe('windows-1251'); // bg_BG
-      expect(getEncodingForLcid(1067)).toBe('windows-1251'); // hy_AM (Armenian)
+      expect(getEncodingForLcid(1067)).toBe('utf-8'); // hy_AM (Armenian) - uses UTF-8
     });
 
     it('should return correct encoding for Asian languages', () => {

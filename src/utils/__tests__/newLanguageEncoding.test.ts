@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   getEncodingByLangId,
   encodeTextWithEncoding,
-  decodeAnsiText,
+  decodeText,
 } from '../githubCache';
 import { getLcidInfo } from '../localeCodepage';
 
@@ -228,7 +228,7 @@ describe('New Language Creation - Encoding Support', () => {
         const buffer = encoder.encode(newTranslationContent).buffer;
         
         try {
-          const decoded = await decodeAnsiText(buffer);
+          const decoded = await decodeText(buffer);
           expect(decoded).toBe(newTranslationContent);
           expect(decoded).toContain(`LANGID=${lcid}`);
         } catch (error) {
@@ -259,7 +259,7 @@ describe('New Language Creation - Encoding Support', () => {
         
         // Decode it back
         const buffer = encoded.buffer;
-        const decoded = await decodeAnsiText(buffer);
+        const decoded = await decodeText(buffer);
         
         expect(decoded).toContain(`LANGID=${langId}`);
       }
@@ -279,7 +279,7 @@ describe('New Language Creation - Encoding Support', () => {
         const buffer = encoder.encode(content).buffer;
         
         try {
-          const decoded = await decodeAnsiText(buffer);
+          const decoded = await decodeText(buffer);
           expect(decoded).toContain('LANGID=');
           
           // Extract the LANGID value
@@ -316,8 +316,8 @@ describe('New Language Creation - Encoding Support', () => {
       const encoder = new TextEncoder();
       const buffer = encoder.encode(contentWithoutLangId).buffer;
       
-      await expect(decodeAnsiText(buffer)).rejects.toThrowError(
-        'No LANGID found in file. Cannot determine proper ANSI encoding.'
+      await expect(decodeText(buffer)).rejects.toThrowError(
+        'No LANGID found in file. Cannot determine proper encoding.'
       );
     });
 
@@ -333,7 +333,7 @@ describe('New Language Creation - Encoding Support', () => {
         const encoder = new TextEncoder();
         const buffer = encoder.encode(content).buffer;
         
-        await expect(decodeAnsiText(buffer)).rejects.toThrowError();
+        await expect(decodeText(buffer)).rejects.toThrowError();
       }
     });
   });

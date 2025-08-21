@@ -31,7 +31,7 @@ export const saveTranslationFile = ({
     if (!langId) {
       return {
         success: false,
-        error: 'Cannot save: No LANGID found in file. LANGID is required to determine proper ANSI encoding.',
+        error: 'Cannot save: No LANGID found in file. LANGID is required to determine proper encoding.',
       };
     }
 

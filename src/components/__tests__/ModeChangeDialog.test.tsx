@@ -17,7 +17,7 @@ describe('ModeChangeDialog', () => {
     render(<ModeChangeDialog {...defaultProps} />);
     
     // Just check that the component renders without crashing
-    expect(screen.getByText(/Warning/i)).toBeTruthy();
+    expect(screen.getByText(/Switch to Local Files/i)).toBeTruthy();
   });
 
   it('shows warning when pendingChangesCount > 0', () => {

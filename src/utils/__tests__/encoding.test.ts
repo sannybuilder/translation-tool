@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   getEncodingByLangId,
   encodeTextWithEncoding,
-  decodeAnsiText,
+  decodeText,
 } from '../githubCache';
 
 // Mock lcid module
@@ -86,8 +86,8 @@ describe('Encoding Functions', () => {
       expect(getEncodingByLangId('1058')).toBe('windows-1251');
     });
 
-    it('should return windows-1251 for Armenian LANGID 1067', () => {
-      expect(getEncodingByLangId('1067')).toBe('windows-1251');
+    it('should return utf-8 for Armenian LANGID 1067', () => {
+      expect(getEncodingByLangId('1067')).toBe('utf-8');
     });
 
     it('should return windows-1253 for Greek LANGID 1032', () => {
@@ -212,13 +212,13 @@ describe('Encoding Functions', () => {
     });
   });
 
-  describe('decodeAnsiText', () => {
+  describe('decodeText', () => {
     it('should decode text with LANGID in the content', async () => {
       const text = 'LANGID=1045\nSome Polish text';
       const encoder = new TextEncoder();
       const buffer = encoder.encode(text).buffer;
       
-      const result = await decodeAnsiText(buffer);
+      const result = await decodeText(buffer);
       expect(typeof result).toBe('string');
       expect(result).toContain('LANGID=1045');
     });
@@ -228,7 +228,7 @@ describe('Encoding Functions', () => {
       const encoder = new TextEncoder();
       const buffer = encoder.encode(text).buffer;
       
-      const result = await decodeAnsiText(buffer);
+      const result = await decodeText(buffer);
       expect(typeof result).toBe('string');
       expect(result).toContain('LANGID=1049');
     });
@@ -238,12 +238,12 @@ describe('Encoding Functions', () => {
       const encoder = new TextEncoder();
       const buffer = encoder.encode(text).buffer;
       
-      await expect(decodeAnsiText(buffer)).rejects.toThrowError('No LANGID found in file. Cannot determine proper ANSI encoding.');
+      await expect(decodeText(buffer)).rejects.toThrowError('No LANGID found in file. Cannot determine proper encoding.');
     });
 
     it('should throw error for empty buffer', async () => {
       const buffer = new ArrayBuffer(0);
-      await expect(decodeAnsiText(buffer)).rejects.toThrowError('No LANGID found in file. Cannot determine proper ANSI encoding.');
+      await expect(decodeText(buffer)).rejects.toThrowError('No LANGID found in file. Cannot determine proper encoding.');
     });
 
     it('should extract LANGID from the first 100 bytes', async () => {
@@ -251,7 +251,7 @@ describe('Encoding Functions', () => {
       const encoder = new TextEncoder();
       const buffer = encoder.encode(longText).buffer;
       
-      const result = await decodeAnsiText(buffer);
+      const result = await decodeText(buffer);
       expect(typeof result).toBe('string');
       expect(result).toContain('LANGID=1031');
     });
@@ -261,7 +261,7 @@ describe('Encoding Functions', () => {
       const encoder = new TextEncoder();
       const buffer = encoder.encode(text).buffer;
       
-      const result = await decodeAnsiText(buffer);
+      const result = await decodeText(buffer);
       expect(typeof result).toBe('string');
       expect(result).toContain('LANGID=1033');
       expect(result).toContain('[Section]');
@@ -273,7 +273,7 @@ describe('Encoding Functions', () => {
       const buffer = encoder.encode(text).buffer;
       
       // Should throw error for unknown LANGID
-      await expect(decodeAnsiText(buffer)).rejects.toThrowError('Unknown LANGID: 9999. Unable to determine proper encoding.');
+      await expect(decodeText(buffer)).rejects.toThrowError('Unknown LANGID: 9999. Unable to determine proper encoding.');
     });
 
     it('should throw error when LANGID is not a number', async () => {
@@ -282,7 +282,7 @@ describe('Encoding Functions', () => {
       const buffer = encoder.encode(text).buffer;
       
       // LANGID is invalid, will be ignored and treated as no LANGID
-      await expect(decodeAnsiText(buffer)).rejects.toThrowError('No LANGID found in file. Cannot determine proper ANSI encoding.');
+      await expect(decodeText(buffer)).rejects.toThrowError('No LANGID found in file. Cannot determine proper encoding.');
     });
   });
 
@@ -297,7 +297,7 @@ describe('Encoding Functions', () => {
       const buffer = encoded.buffer;
       
       // Decode should work correctly
-      const decoded = await decodeAnsiText(buffer);
+      const decoded = await decodeText(buffer);
       
       expect(decoded).toBe(originalText);
     });
@@ -315,7 +315,7 @@ Key3=Wert3`;
       // Encode with German encoding (windows-1252)
       const encoded = encodeTextWithEncoding(originalText, 'windows-1252');
       const buffer = encoded.buffer;
-      const decoded = await decodeAnsiText(buffer);
+      const decoded = await decodeText(buffer);
       
       expect(decoded).toContain('LANGID=1031');
       expect(decoded).toContain('[Section1]');

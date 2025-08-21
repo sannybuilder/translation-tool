@@ -27,7 +27,7 @@ describe('LocalFileEditor', () => {
     
     const step1Headers = screen.getAllByText(/Step 1: Select Base File/i);
     expect(step1Headers[0]).toBeTruthy();
-    const step2Headers = screen.getAllByText(/Step 2: Open Translation File/i);
+    const step2Headers = screen.getAllByText(/Step 2: Select Translation File/i);
     expect(step2Headers[0]).toBeTruthy();
   });
 
@@ -45,8 +45,8 @@ describe('LocalFileEditor', () => {
      
      const baseButtons = screen.getAllByText(/Open Local File/i);
      expect(baseButtons[0]).toBeTruthy();
-     const translationButtons = screen.getAllByText(/Open Translation/i);
-     expect(translationButtons[0]).toBeTruthy();
+     const translationButtons = screen.getAllByText(/Open Local File/i);
+     expect(translationButtons[1]).toBeTruthy();
      const baseHints = screen.getAllByText(/english.ini/i);
      expect(baseHints[0]).toBeTruthy();
      const translationHints = screen.getAllByText(/Your language.ini file/i);

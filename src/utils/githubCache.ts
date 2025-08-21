@@ -75,7 +75,7 @@ export const getEncodingByLangId = (langId: string): string | null => {
 };
 
 // Helper function to decode text with LANGID-based encoding detection
-export async function decodeAnsiText(buffer: ArrayBuffer): Promise<string> {
+export async function decodeText(buffer: ArrayBuffer): Promise<string> {
   // First, try to extract LANGID from the beginning of the file
   const uint8Array = new Uint8Array(buffer);
   const first100Bytes = uint8Array.slice(0, Math.min(100, uint8Array.length));
@@ -107,7 +107,7 @@ export async function decodeAnsiText(buffer: ArrayBuffer): Promise<string> {
   }
   
   // No LANGID found - this is an error for INI files
-  throw new Error('No LANGID found in file. Cannot determine proper ANSI encoding.');
+  throw new Error('No LANGID found in file. Cannot determine proper encoding.');
 }
 
 // Helper function to encode text with specified encoding
@@ -196,7 +196,7 @@ export async function fetchGitHubFileList(): Promise<{ files: string[], englishD
     
     // Load English data from GitHub
     const englishResponse = await fetch(`${GITHUB_RAW_URL}/english.ini`);
-    const englishText = await decodeAnsiText(await englishResponse.arrayBuffer());
+    const englishText = await decodeText(await englishResponse.arrayBuffer());
     const englishData = parseIni(englishText);
     
     return { files: iniFiles, englishData };
@@ -230,7 +230,7 @@ export async function fetchTranslationFile(filename: string): Promise<IniData> {
       throw new Error(`Failed to load ${filename} (Error ${response.status}).`);
     }
     
-    const text = await decodeAnsiText(await response.arrayBuffer());
+    const text = await decodeText(await response.arrayBuffer());
     return parseIni(text);
   } catch (error) {
     clearTimeout(timeoutId);
@@ -245,7 +245,7 @@ export function readLocalFile(file: File): Promise<IniData> {
     reader.onload = (e) => {
       const buffer = e.target?.result as ArrayBuffer;
 
-      decodeAnsiText(buffer).then(text => resolve(parseIni(text)));
+      decodeText(buffer).then(text => resolve(parseIni(text)));
     };
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
