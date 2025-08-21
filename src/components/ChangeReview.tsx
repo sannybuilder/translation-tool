@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ChangeTracker } from '../utils/changeTracker';
 import type { TrackedChange } from '../types/changeTracking';
+import type { IniData } from '../utils/iniParser';
+import { useImportTranslations } from '../hooks/useImportTranslations';
+import ImportDialog from './ImportDialog';
+import ImportButton from './ui/ImportButton';
 
 interface ChangeReviewProps {
   changeTracker: ChangeTracker | null;
@@ -13,6 +17,9 @@ interface ChangeReviewProps {
   onDownloadFullFile?: () => void;
   onUndo?: (section: string, key: string, originalValue: string) => void;
   isMobile?: boolean;
+  importMode?: boolean;
+  translationData?: IniData;
+  onImportChanges?: (section: string, key: string, newValue: string) => void;
 }
 
 const ChangeReview: React.FC<ChangeReviewProps> = ({
@@ -26,6 +33,9 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
   onDownloadFullFile,
   onUndo,
   isMobile = false,
+  importMode = false,
+  translationData = {},
+  onImportChanges,
 }) => {
   const [unsubmittedChanges, setUnsubmittedChanges] = useState<TrackedChange[]>([]);
   const [selectedChanges, setSelectedChanges] = useState<Set<string>>(new Set());
@@ -33,6 +43,28 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
   const [showExplanationPopup, setShowExplanationPopup] = useState(false);
 
   const [stats, setStats] = useState({ total: 0, submitted: 0, pending: 0, sections: 0 });
+
+  // Use the import hook
+  const {
+    showImportDialog,
+    importText,
+    importReport,
+    setShowImportDialog,
+    setImportText,
+    handleImport,
+    clearImport
+  } = useImportTranslations({
+    changeTracker,
+    translationData,
+    onImportChanges,
+    onChangesImported: () => {
+      // Update the displayed changes after import
+      if (changeTracker) {
+        setUnsubmittedChanges(changeTracker.getUnsubmittedChanges());
+        setStats(changeTracker.getStats());
+      }
+    }
+  });
 
   useEffect(() => {
     if (changeTracker) {
@@ -297,6 +329,14 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
                 )}
               </div>
             </div>
+          )}
+
+          {/* Import button - show when in import mode */}
+          {importMode && (
+            <ImportButton 
+              onClick={() => setShowImportDialog(true)} 
+              isMobile={isMobile} 
+            />
           )}
 
           <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0.75rem' : '1rem', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
@@ -609,6 +649,17 @@ const ChangeReview: React.FC<ChangeReviewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Import Dialog */}
+      <ImportDialog
+        isOpen={showImportDialog}
+        importText={importText}
+        importReport={importReport}
+        isMobile={isMobile}
+        onImportTextChange={setImportText}
+        onImport={handleImport}
+        onClose={clearImport}
+      />
     </>
   );
 };

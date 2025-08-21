@@ -72,6 +72,9 @@ function App() {
   // Scroll to top button visibility
   const [showScrollTop, setShowScrollTop] = useState(false);
 
+  // Import mode from query param
+  const importMode = new URLSearchParams(window.location.search).get('import') === 'true';
+
   const isMobile = screenSize === 'mobile';
   const isMedium = screenSize === 'medium';
 
@@ -143,7 +146,7 @@ function App() {
         appliedCacheToTrackerRef.current = true;
       }
     }
-  }, [changeTrackerRef.current, selectedTranslation]);
+  }, [selectedTranslation]);
 
 
   // Handle local English file upload
@@ -835,6 +838,12 @@ function App() {
           isOpen={isPartialUpdatePanelOpen}
           onClose={() => setIsPartialUpdatePanelOpen(false)}
           onDownloadFullFile={handleSave}
+          importMode={importMode}
+          translationData={translationData}
+          onImportChanges={(section: string, key: string, newValue: string) => {
+            // Apply imported change
+            handleTranslationChange(section, key, newValue);
+          }}
           onUndo={(section: string, key: string, originalValue: string) => {
             // Update the translation data with the original value
             handleTranslationChange(section, key, originalValue);

@@ -294,6 +294,56 @@ export class ChangeTracker {
   setSelectedTranslation(translation: string): void {
     this.selectedTranslation = translation;
   }
+
+  // Import changes from external data (for submission imports)
+  importChanges(
+    changes: Array<{ section: string; key: string; value: string }>,
+    currentData: IniData
+  ): {
+    imported: Array<{ section: string; key: string; value: string }>;
+    skipped: Array<{ section: string; key: string; value: string; reason: string }>;
+    replaced: Array<{ section: string; key: string; oldValue: string; newValue: string }>;
+  } {
+    const imported: Array<{ section: string; key: string; value: string }> = [];
+    const skipped: Array<{ section: string; key: string; value: string; reason: string }> = [];
+    const replaced: Array<{ section: string; key: string; oldValue: string; newValue: string }> = [];
+
+    for (const change of changes) {
+      const { section, key, value } = change;
+
+      // Check if section exists in current data
+      if (!currentData[section]) {
+        skipped.push({ section, key, value, reason: 'Section not found' });
+        continue;
+      }
+
+      // Check if key exists in section
+      if (!(key in currentData[section])) {
+        skipped.push({ section, key, value, reason: 'Key not found' });
+        continue;
+      }
+
+      // Check if there's already a tracked change for this key
+      const changeId = `${section}-${key}`;
+      const existingChange = this.changes.get(changeId);
+      
+      if (existingChange && !existingChange.submitted) {
+        // Replace existing change
+        replaced.push({
+          section,
+          key,
+          oldValue: existingChange.newValue,
+          newValue: value
+        });
+      }
+
+      // Track the change (will overwrite existing change if present)
+      this.trackChange(section, key, value);
+      imported.push({ section, key, value });
+    }
+
+    return { imported, skipped, replaced };
+  }
 }
 
 // Submission history functionality has been removed
