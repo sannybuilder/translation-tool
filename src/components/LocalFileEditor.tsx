@@ -384,7 +384,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 textAlign: 'center',
               }}
             >
-              Step 2: Open Translation File
+              Step 2: Select Translation File
             </h4>
             
             <div
@@ -397,47 +397,6 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 justifyContent: 'center',
               }}
             >
-              {/* Open Translation File Option */}
-              <label
-                style={{
-                  backgroundColor: localFileName ? '#2d4a2d' : '#2a2a2a',
-                  color: '#fff',
-                  border: localFileName ? '1px solid #4CAF50' : '1px solid #444',
-                  padding: '1rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  minWidth: '200px',
-                }}
-              >
-                <span style={{ fontSize: '1.5rem' }}>
-                  {localFileName ? '✅' : '🌍'}
-                </span>
-                <span>{localFileName ? 'Translation File' : 'Open Translation'}</span>
-                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
-                  {localFileName ? localFileName : 'Your language.ini file'}
-                </span>
-                <input type="file" accept=".ini" onChange={onTranslationFileUpload} style={{ display: 'none' }} />
-              </label>
-
-              {/* OR separator */}
-              <div
-                style={{
-                  textAlign: 'center',
-                  color: '#666',
-                  fontSize: '0.9rem',
-                  fontStyle: 'italic',
-                  padding: '0 0.5rem',
-                }}
-              >
-                OR
-              </div>
-
               {/* Create New Translation Option */}
               <button
                 onClick={() => setShowNewTranslationDialog(true)}
@@ -461,6 +420,47 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 <span>Create New Translation</span>
                 <span style={{ fontSize: '0.8rem', color: '#aaa' }}>New language.ini file</span>
               </button>
+
+              {/* OR separator */}
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#666',
+                  fontSize: '0.9rem',
+                  fontStyle: 'italic',
+                  padding: '0 0.5rem',
+                }}
+              >
+                OR
+              </div>
+
+              {/* Open Translation File Option */}
+              <label
+                style={{
+                  backgroundColor: localFileName ? '#2d4a2d' : '#2a2a2a',
+                  color: '#fff',
+                  border: localFileName ? '1px solid #4CAF50' : '1px solid #444',
+                  padding: '1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  minWidth: '200px',
+                }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>
+                  {localFileName ? '✅' : '🌍'}
+                </span>
+                <span>{localFileName ? 'Translation File' : 'Open Local File'}</span>
+                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
+                  {localFileName ? localFileName : 'Your language.ini file'}
+                </span>
+                <input type="file" accept=".ini" onChange={onTranslationFileUpload} style={{ display: 'none' }} />
+              </label>
             </div>
           </div>
 

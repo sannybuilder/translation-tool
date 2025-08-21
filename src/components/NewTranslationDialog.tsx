@@ -48,10 +48,21 @@ const NewTranslationDialog: React.FC<NewTranslationDialogProps> = ({
     }
   };
 
-  // Filter languages based on search term
-  const filteredLanguages = lcidData.filter((lang: LcidEntry) =>
-    lang.language.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter languages based on search term - automatically detect search type
+  const filteredLanguages = lcidData.filter((lang: LcidEntry) => {
+    if (!searchTerm.trim()) return true;
+    
+    // Check if search term is numeric (LCID search)
+    const isNumericSearch = /^\d+$/.test(searchTerm.trim());
+    
+    if (isNumericSearch) {
+      // Search by LCID code
+      return lang.lcid.toString().includes(searchTerm);
+    } else {
+      // Search by language name
+      return lang.language.toLowerCase().includes(searchTerm.toLowerCase());
+    }
+  });
 
   // Auto-generate filename when language is selected from list
   useEffect(() => {
@@ -140,24 +151,24 @@ const NewTranslationDialog: React.FC<NewTranslationDialogProps> = ({
              </div>
            )}
 
-           {/* Language List - Only show if data loaded successfully */}
-           {!isLoading && lcidData.length > 0 && (
-             <>
-               <input
-                 type="text"
-                 placeholder="Search languages..."
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 style={{
-                   width: '100%',
-                   padding: '0.75rem',
-                   backgroundColor: '#2a2a2a',
-                   border: '1px solid #444',
-                   borderRadius: '4px',
-                   color: '#fff',
-                   marginBottom: '1rem',
-                 }}
-               />
+                       {/* Language List - Only show if data loaded successfully */}
+            {!isLoading && lcidData.length > 0 && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Search by language name or LCID (e.g., 'german' or '1031')"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    backgroundColor: '#2a2a2a',
+                    border: '1px solid #444',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    marginBottom: '1rem',
+                  }}
+                />
                <div
                  style={{
                    maxHeight: '200px',
@@ -174,7 +185,10 @@ const NewTranslationDialog: React.FC<NewTranslationDialogProps> = ({
                      color: '#888',
                      fontStyle: 'italic'
                    }}>
-                     {searchTerm ? 'No languages found matching your search.' : 'No languages available.'}
+                     {searchTerm ? 
+                       `No languages found matching "${searchTerm}"` : 
+                       'No languages available.'
+                     }
                    </div>
                  ) : (
                    filteredLanguages.map((lang: LcidEntry) => (
