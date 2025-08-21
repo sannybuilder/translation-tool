@@ -19,6 +19,14 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
   'id': 'windows-1252',    // Indonesian
   'ms': 'windows-1252',    // Malay
   'sw': 'windows-1252',    // Swahili
+  'af': 'windows-1252',    // Afrikaans
+  'ca': 'windows-1252',    // Catalan
+  'eu': 'windows-1252',    // Basque
+  'gl': 'windows-1252',    // Galician
+  'is': 'windows-1252',    // Icelandic
+  'ga': 'windows-1252',    // Irish
+  'lb': 'windows-1252',    // Luxembourgish
+  'mt': 'windows-1252',    // Maltese
   
   // Central European (CP1250)
   'pl': 'windows-1250',    // Polish
@@ -29,6 +37,7 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
   'sk': 'windows-1250',    // Slovak
   'sl': 'windows-1250',    // Slovenian
   'sq': 'windows-1250',    // Albanian
+  'bs': 'windows-1250',    // Bosnian
   
   // Cyrillic (CP1251)
   'ru': 'windows-1251',    // Russian
@@ -57,7 +66,6 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
   // Arabic (CP1256)
   'ar': 'windows-1256',
   'fa': 'windows-1256',    // Persian/Farsi
-  'ur': 'windows-1256',    // Urdu
   
   // Baltic (CP1257)
   'et': 'windows-1257',    // Estonian
@@ -86,6 +94,28 @@ const LOCALE_TO_CODEPAGE: Record<string, string> = {
   'zh_Hant': 'big5',
   'zh_HK': 'big5',         // Hong Kong
   'zh_MO': 'big5',         // Macau
+  
+  // Indian Scripts (UTF-8 fallback to windows-1252 for Windows compatibility)
+  'hi': 'windows-1252',    // Hindi
+  'bn': 'windows-1252',    // Bengali
+  'gu': 'windows-1252',    // Gujarati
+  'kn': 'windows-1252',    // Kannada
+  'ml': 'windows-1252',    // Malayalam
+  'mr': 'windows-1252',    // Marathi
+  'ne': 'windows-1252',    // Nepali
+  'pa': 'windows-1252',    // Punjabi
+  'si': 'windows-1252',    // Sinhala
+  'ta': 'windows-1252',    // Tamil
+  'te': 'windows-1252',    // Telugu
+  'ur': 'windows-1252',    // Urdu
+  
+  // Other Important Languages
+  'ka': 'windows-1252',    // Georgian (fallback to windows-1252)
+  'am': 'windows-1252',    // Amharic (fallback to windows-1252)
+  'my': 'windows-1252',    // Burmese (fallback to windows-1252)
+  'km': 'windows-1252',    // Khmer (fallback to windows-1252)
+  'lo': 'windows-1252',    // Lao (fallback to windows-1252)
+  'mn': 'windows-1252',    // Mongolian (fallback to windows-1252)
 };
 
 /**

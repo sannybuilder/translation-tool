@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { readLocalFile, fetchGitHubFileList } from '../utils/githubCache';
 import type { IniData } from '../utils/iniParser';
+import NewTranslationDialog from './NewTranslationDialog';
 
 interface LocalFileEditorProps {
   onFilesLoaded: (
@@ -29,6 +30,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [loadingGitHub, setLoadingGitHub] = useState(false);
+  const [showNewTranslationDialog, setShowNewTranslationDialog] = useState(false);
 
   const isEnglishFile = (filename: string): boolean => {
     const lowercaseName = filename.toLowerCase();
@@ -114,6 +116,21 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
     } finally {
       setLoadingGitHub(false);
     }
+  };
+
+  // Handle creating new translation
+  const handleCreateNewTranslation = (_langId: number, fileName: string, content: string) => {
+    // Create a virtual file object with the content
+    const virtualFile = new File([content], fileName.endsWith('.ini') ? fileName : `${fileName}.ini`, {
+      type: 'text/plain',
+    });
+    
+    // Process the virtual file as if it was uploaded
+    const event = {
+      target: { files: [virtualFile] }
+    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    
+    onTranslationFileUpload(event);
   };
 
   // Handle drag events
@@ -351,7 +368,7 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
              </div>
           </div>
 
-          {/* Step 2: Open Translation File */}
+                    {/* Step 2: Open Translation File */}
           <div
             style={{
               marginBottom: '2rem',
@@ -373,15 +390,20 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
             <div
               style={{
                 display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: '1rem',
+                marginBottom: '1rem',
+                alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
+              {/* Open Translation File Option */}
               <label
                 style={{
                   backgroundColor: localFileName ? '#2d4a2d' : '#2a2a2a',
                   color: '#fff',
                   border: localFileName ? '1px solid #4CAF50' : '1px solid #444',
-                  padding: '1rem 2rem',
+                  padding: '1rem',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   fontSize: '0.9rem',
@@ -402,6 +424,43 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
                 </span>
                 <input type="file" accept=".ini" onChange={onTranslationFileUpload} style={{ display: 'none' }} />
               </label>
+
+              {/* OR separator */}
+              <div
+                style={{
+                  textAlign: 'center',
+                  color: '#666',
+                  fontSize: '0.9rem',
+                  fontStyle: 'italic',
+                  padding: '0 0.5rem',
+                }}
+              >
+                OR
+              </div>
+
+              {/* Create New Translation Option */}
+              <button
+                onClick={() => setShowNewTranslationDialog(true)}
+                style={{
+                  backgroundColor: '#2a2a2a',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  padding: '1rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  minWidth: '200px',
+                }}
+              >
+                <span style={{ fontSize: '1.5rem' }}>✨</span>
+                <span>Create New Translation</span>
+                <span style={{ fontSize: '0.8rem', color: '#aaa' }}>New language.ini file</span>
+              </button>
             </div>
           </div>
 
@@ -417,6 +476,13 @@ const LocalFileEditor: React.FC<LocalFileEditorProps> = ({
           </p>
         </>
       )}
+
+      {/* New Translation Dialog */}
+      <NewTranslationDialog
+        isOpen={showNewTranslationDialog}
+        onClose={() => setShowNewTranslationDialog(false)}
+        onCreate={handleCreateNewTranslation}
+      />
     </div>
   );
 };
