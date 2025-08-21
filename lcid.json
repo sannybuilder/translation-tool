@@ -1,0 +1,518 @@
+[
+  {
+    "lcid": 1078,
+    "language": "Afrikaans"
+  },
+  {
+    "lcid": 1052,
+    "language": "Albanian"
+  },
+  {
+    "lcid": 1118,
+    "language": "Amharic"
+  },
+  {
+    "lcid": 1025,
+    "language": "Arabic"
+  },
+  {
+    "lcid": 1067,
+    "language": "Armenian"
+  },
+  {
+    "lcid": 1101,
+    "language": "Assamese"
+  },
+  {
+    "lcid": 2092,
+    "language": "Azerbaijani"
+  },
+  {
+    "lcid": 1133,
+    "language": "Bashkir"
+  },
+  {
+    "lcid": 1069,
+    "language": "Basque"
+  },
+  {
+    "lcid": 1059,
+    "language": "Belarusian"
+  },
+  {
+    "lcid": 1093,
+    "language": "Bengali"
+  },
+  {
+    "lcid": 8218,
+    "language": "Bosnian"
+  },
+  {
+    "lcid": 1150,
+    "language": "Breton"
+  },
+  {
+    "lcid": 1026,
+    "language": "Bulgarian"
+  },
+  {
+    "lcid": 1109,
+    "language": "Burmese"
+  },
+  {
+    "lcid": 1027,
+    "language": "Catalan"
+  },
+  {
+    "lcid": 1116,
+    "language": "Cherokee"
+  },
+  {
+    "lcid": 4,
+    "language": "Chinese"
+  },
+  {
+    "lcid": 1155,
+    "language": "Corsican"
+  },
+  {
+    "lcid": 1050,
+    "language": "Croatian"
+  },
+  {
+    "lcid": 1029,
+    "language": "Czech"
+  },
+  {
+    "lcid": 1030,
+    "language": "Danish"
+  },
+  {
+    "lcid": 1164,
+    "language": "Dari"
+  },
+  {
+    "lcid": 1125,
+    "language": "Divehi"
+  },
+  {
+    "lcid": 1043,
+    "language": "Dutch"
+  },
+  {
+    "lcid": 1033,
+    "language": "English"
+  },
+  {
+    "lcid": 1061,
+    "language": "Estonian"
+  },
+  {
+    "lcid": 1080,
+    "language": "Faroese"
+  },
+  {
+    "lcid": 1124,
+    "language": "Filipino"
+  },
+  {
+    "lcid": 1035,
+    "language": "Finnish"
+  },
+  {
+    "lcid": 1036,
+    "language": "French"
+  },
+  {
+    "lcid": 1127,
+    "language": "Fulfulde"
+  },
+  {
+    "lcid": 1110,
+    "language": "Galician"
+  },
+  {
+    "lcid": 1079,
+    "language": "Georgian"
+  },
+  {
+    "lcid": 1031,
+    "language": "German"
+  },
+  {
+    "lcid": 1032,
+    "language": "Greek"
+  },
+  {
+    "lcid": 1095,
+    "language": "Gujarati"
+  },
+  {
+    "lcid": 1128,
+    "language": "Hausa"
+  },
+  {
+    "lcid": 1037,
+    "language": "Hebrew"
+  },
+  {
+    "lcid": 1081,
+    "language": "Hindi"
+  },
+  {
+    "lcid": 1038,
+    "language": "Hungarian"
+  },
+  {
+    "lcid": 1039,
+    "language": "Icelandic"
+  },
+  {
+    "lcid": 9275,
+    "language": "Inari Sami"
+  },
+  {
+    "lcid": 1057,
+    "language": "Indonesian"
+  },
+  {
+    "lcid": 2141,
+    "language": "Inuktitut"
+  },
+  {
+    "lcid": 2108,
+    "language": "Irish"
+  },
+  {
+    "lcid": 1040,
+    "language": "Italian"
+  },
+  {
+    "lcid": 1041,
+    "language": "Japanese"
+  },
+  {
+    "lcid": 1158,
+    "language": "K'iche"
+  },
+  {
+    "lcid": 1135,
+    "language": "Kalaallisut"
+  },
+  {
+    "lcid": 1099,
+    "language": "Kannada"
+  },
+  {
+    "lcid": 1087,
+    "language": "Kazakh"
+  },
+  {
+    "lcid": 1107,
+    "language": "Khmer"
+  },
+  {
+    "lcid": 1159,
+    "language": "Kinyarwanda"
+  },
+  {
+    "lcid": 1111,
+    "language": "Konkani"
+  },
+  {
+    "lcid": 1042,
+    "language": "Korean"
+  },
+  {
+    "lcid": 1088,
+    "language": "Kyrgyz"
+  },
+  {
+    "lcid": 1108,
+    "language": "Lao"
+  },
+  {
+    "lcid": 1062,
+    "language": "Latvian"
+  },
+  {
+    "lcid": 1063,
+    "language": "Lithuanian"
+  },
+  {
+    "lcid": 2094,
+    "language": "Lower Sorbian"
+  },
+  {
+    "lcid": 4155,
+    "language": "Lule Sami"
+  },
+  {
+    "lcid": 1134,
+    "language": "Luxembourgish"
+  },
+  {
+    "lcid": 1071,
+    "language": "Macedonian"
+  },
+  {
+    "lcid": 1086,
+    "language": "Malay"
+  },
+  {
+    "lcid": 1100,
+    "language": "Malayalam"
+  },
+  {
+    "lcid": 1082,
+    "language": "Maltese"
+  },
+  {
+    "lcid": 1153,
+    "language": "Maori"
+  },
+  {
+    "lcid": 1146,
+    "language": "Mapudungun"
+  },
+  {
+    "lcid": 1102,
+    "language": "Marathi"
+  },
+  {
+    "lcid": 1148,
+    "language": "Mohawk"
+  },
+  {
+    "lcid": 1104,
+    "language": "Mongolian"
+  },
+  {
+    "lcid": 1121,
+    "language": "Nepali"
+  },
+  {
+    "lcid": 1083,
+    "language": "Northern Sami"
+  },
+  {
+    "lcid": 1132,
+    "language": "Northern Sotho"
+  },
+  {
+    "lcid": 1044,
+    "language": "Norwegian Bokmål"
+  },
+  {
+    "lcid": 2068,
+    "language": "Norwegian Nynorsk"
+  },
+  {
+    "lcid": 1154,
+    "language": "Occitan"
+  },
+  {
+    "lcid": 1096,
+    "language": "Odia"
+  },
+  {
+    "lcid": 1123,
+    "language": "Pashto"
+  },
+  {
+    "lcid": 1065,
+    "language": "Persian"
+  },
+  {
+    "lcid": 1045,
+    "language": "Polish"
+  },
+  {
+    "lcid": 1046,
+    "language": "Portuguese"
+  },
+  {
+    "lcid": 1094,
+    "language": "Punjabi"
+  },
+  {
+    "lcid": 1131,
+    "language": "Quechua"
+  },
+  {
+    "lcid": 1048,
+    "language": "Romanian"
+  },
+  {
+    "lcid": 1047,
+    "language": "Romansh"
+  },
+  {
+    "lcid": 1049,
+    "language": "Russian"
+  },
+  {
+    "lcid": 1157,
+    "language": "Sah"
+  },
+  {
+    "lcid": 1103,
+    "language": "Sanskrit"
+  },
+  {
+    "lcid": 3098,
+    "language": "Serbian"
+  },
+  {
+    "lcid": 1144,
+    "language": "Sichuan Yi"
+  },
+  {
+    "lcid": 1115,
+    "language": "Sinhala"
+  },
+  {
+    "lcid": 8251,
+    "language": "Skolt Sami"
+  },
+  {
+    "lcid": 1051,
+    "language": "Slovak"
+  },
+  {
+    "lcid": 1060,
+    "language": "Slovenian"
+  },
+  {
+    "lcid": 1070,
+    "language": "Sorbian"
+  },
+  {
+    "lcid": 6203,
+    "language": "Southern Sami"
+  },
+  {
+    "lcid": 1072,
+    "language": "Southern Sotho"
+  },
+  {
+    "lcid": 1034,
+    "language": "Spanish"
+  },
+  {
+    "lcid": 1089,
+    "language": "Swahili"
+  },
+  {
+    "lcid": 1053,
+    "language": "Swedish"
+  },
+  {
+    "lcid": 1156,
+    "language": "Swiss German"
+  },
+  {
+    "lcid": 1114,
+    "language": "Syriac"
+  },
+  {
+    "lcid": 1064,
+    "language": "Tajik"
+  },
+  {
+    "lcid": 1119,
+    "language": "Tamazight"
+  },
+  {
+    "lcid": 1097,
+    "language": "Tamil"
+  },
+  {
+    "lcid": 1092,
+    "language": "Tatar"
+  },
+  {
+    "lcid": 1098,
+    "language": "Telugu"
+  },
+  {
+    "lcid": 1054,
+    "language": "Thai"
+  },
+  {
+    "lcid": 1105,
+    "language": "Tibetan"
+  },
+  {
+    "lcid": 2163,
+    "language": "Tigrinya"
+  },
+  {
+    "lcid": 1073,
+    "language": "Ts"
+  },
+  {
+    "lcid": 1074,
+    "language": "Tswana"
+  },
+  {
+    "lcid": 1055,
+    "language": "Turkish"
+  },
+  {
+    "lcid": 1090,
+    "language": "Turkmen"
+  },
+  {
+    "lcid": 1058,
+    "language": "Ukrainian"
+  },
+  {
+    "lcid": 1056,
+    "language": "Urdu"
+  },
+  {
+    "lcid": 1152,
+    "language": "Uyghur"
+  },
+  {
+    "lcid": 2115,
+    "language": "Uzbek"
+  },
+  {
+    "lcid": 1075,
+    "language": "Venda"
+  },
+  {
+    "lcid": 1066,
+    "language": "Vietnamese"
+  },
+  {
+    "lcid": 1106,
+    "language": "Welsh"
+  },
+  {
+    "lcid": 1122,
+    "language": "Western Frisian"
+  },
+  {
+    "lcid": 1160,
+    "language": "Wolof"
+  },
+  {
+    "lcid": 1076,
+    "language": "Xhosa"
+  },
+  {
+    "lcid": 1085,
+    "language": "Yiddish"
+  },
+  {
+    "lcid": 1130,
+    "language": "Yoruba"
+  },
+  {
+    "lcid": 1077,
+    "language": "Zulu"
+  }
+]
